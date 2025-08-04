@@ -1,0 +1,8 @@
+{
+  "parent": "parents/cube_sided",
+  "textures": {
+    "side": "grass_side",
+    "up": "grass_top",
+    "down": "dirt"
+  }
+}

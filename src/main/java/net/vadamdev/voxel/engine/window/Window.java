@@ -1,48 +1,45 @@
 package net.vadamdev.voxel.engine.window;
 
 import net.vadamdev.voxel.engine.inputs.InputsManager;
+import net.vadamdev.voxel.engine.utils.Callable;
+import net.vadamdev.voxel.engine.utils.Disposable;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
-
-import java.util.function.Consumer;
 
 import static org.lwjgl.glfw.Callbacks.glfwFreeCallbacks;
 import static org.lwjgl.glfw.GLFW.*;
 
 /**
  * @author VadamDev
- * @since 03/02/2025
+ * @since 29/05/2025
  */
-public class Window {
+public class Window implements Disposable {
     private String title;
     private int width, height;
 
     protected long windowId;
-    private final int[] xPos, yPos;
 
-    private boolean resized;
-    private Consumer<Window> resizeCallback;
+    private boolean resized, grabbed;
+    private Callable resizeCallback;
 
     public Window(String title, int width, int height) {
         this.title = title;
         this.width = width;
         this.height = height;
 
-        this.xPos = new int[1];
-        this.yPos = new int[1];
-
         this.resized = true;
     }
 
-    public void create() {
+    public void init() {
+        //Initializing GLFW
+        GLFWErrorCallback.createPrint(System.err).set();
+
         if(!glfwInit())
-            throw new IllegalStateException("An error occurred while initializing GLFW!");
+            throw new IllegalStateException("Unable to initialize GLFW!");
 
-        glfwSetErrorCallback(GLFWErrorCallback.createPrint(System.err));
-
-        //Window hints
+        //Creating the window
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -50,35 +47,50 @@ public class Window {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
-        //Creating the window
-        if((windowId = glfwCreateWindow(width, height, title, 0, 0)) == 0) {
-            glfwTerminate();
-            throw new IllegalStateException("Failed to create a window !");
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+
+        boolean maximized = false;
+        if(width == 0 || height == 0) {
+            width = 100;
+            height = 100;
+
+            glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+            maximized = true;
         }
 
-        //Centering the window
-        final GLFWVidMode vidMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-        xPos[0] = (vidMode.width() - width) / 2;
-        yPos[0] = (vidMode.height() - height) / 2;
-        glfwSetWindowPos(windowId, xPos[0], yPos[0]);
+        if((windowId = glfwCreateWindow(width, height, title, 0, 0)) == 0)
+            throw new IllegalStateException("Failed to create GLFW window!");
 
-        //Setup Callbacks
+        //Setup callbacks
         setupCallbacks();
 
-        //Set the current OpenGL context, a swap interval is set to 0 (no vsync! (for now))
-        glfwMakeContextCurrent(windowId);
-        glfwSwapInterval(0);
+        //Centering the window
+        if(maximized)
+            glfwMaximizeWindow(windowId);
+        else {
+            final GLFWVidMode vidMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+            glfwSetWindowPos(windowId, (vidMode.width() - width) / 2, (vidMode.height() - height) / 2);
+        }
 
-        //Create OpenGl capabilities
-        GL.createCapabilities();
+        //Set the current OpenGL context
+        glfwMakeContextCurrent(windowId);
+        glfwSwapInterval(0); //TODO: vsync support
 
         //Show the window
         glfwShowWindow(windowId);
 
+        //Create OpenGL capabilities
+        GL.createCapabilities();
+
         GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glEnable(GL11.GL_STENCIL_TEST);
+
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
-    protected void setupCallbacks() {
+    private void setupCallbacks() {
         glfwSetFramebufferSizeCallback(windowId, (windowId, w, h) -> {
             width = w;
             height = h;
@@ -96,21 +108,21 @@ public class Window {
             GL11.glViewport(0, 0, width, height);
 
             if(resizeCallback != null)
-                resizeCallback.accept(this);
+                resizeCallback.run();
 
             resized = false;
         }
 
-        GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
-
         glfwPollEvents();
+        GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
     }
 
     public void swapBuffers() {
         glfwSwapBuffers(windowId);
     }
 
-    public void destroy() {
+    @Override
+    public void dispose() {
         glfwFreeCallbacks(windowId);
         glfwDestroyWindow(windowId);
         glfwTerminate();
@@ -120,11 +132,11 @@ public class Window {
             errorCallback.free();
     }
 
-    public void onResize(Consumer<Window> resizeCallback) {
-        if(this.resizeCallback == null)
-            this.resizeCallback = resizeCallback;
+    public void onResize(Callable callback) {
+        if(resizeCallback == null)
+            resizeCallback = callback;
         else
-            this.resizeCallback = this.resizeCallback.andThen(resizeCallback);
+            resizeCallback = resizeCallback.andThen(callback);
     }
 
     public String getTitle() {
@@ -150,10 +162,11 @@ public class Window {
 
     public void setGrabbed(boolean grabbed) {
         glfwSetInputMode(windowId, GLFW_CURSOR, grabbed ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+        this.grabbed = grabbed;
     }
 
     public boolean isGrabbed() {
-        return glfwGetInputMode(windowId, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+        return grabbed;
     }
 
     public boolean shouldClose() {

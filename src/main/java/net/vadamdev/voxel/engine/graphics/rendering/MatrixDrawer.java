@@ -1,96 +1,131 @@
 package net.vadamdev.voxel.engine.graphics.rendering;
 
-import net.vadamdev.voxel.engine.graphics.rendering.accessor.IFrustumAccessor;
-import net.vadamdev.voxel.engine.graphics.rendering.editor.IProjectionMatrixEditor;
-import net.vadamdev.voxel.engine.graphics.rendering.editor.IViewMatrixEditor;
-import org.joml.FrustumIntersection;
+import net.vadamdev.voxel.engine.graphics.rendering.matrix.IFrustumAccessor;
+import net.vadamdev.voxel.engine.graphics.rendering.matrix.IProjViewContainer;
+import net.vadamdev.voxel.engine.utils.Disposable;
+import org.joml.*;
 import org.joml.Math;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.FloatBuffer;
 
 /**
  * @author VadamDev
- * @since 03/02/2025
+ * @since 03/06/2025
  */
-public class MatrixDrawer implements IProjectionMatrixEditor, IViewMatrixEditor, IFrustumAccessor {
-    //Projection matrix and precomputed buffer
-    private final Matrix4f projectionMatrix;
+public class MatrixDrawer implements IProjViewContainer, IFrustumAccessor, Disposable {
+    //Projection matrix
+    private final Matrix4f projMatrix;
     private final FloatBuffer projMatrixBuffer;
 
     //Rendering
-    private final Matrix4f viewMatrix, modelViewMatrix;
+    private final Matrix4f viewMatrix;
+    private final FloatBuffer viewMatrixBuffer;
 
-    //View Frustrum
-    private final Matrix4f projectionViewMatrix;
+    private final Matrix4f projViewMatrix;
+    private final FloatBuffer projViewMatrixBuffer;
+
+    //View Frustum
     private final FrustumIntersection frustumIntersection;
 
     public MatrixDrawer() {
-        this.projectionMatrix = new Matrix4f();
+        this.projMatrix = new Matrix4f();
         this.projMatrixBuffer = MemoryUtil.memAllocFloat(16);
 
         this.viewMatrix = new Matrix4f();
-        this.modelViewMatrix = new Matrix4f();
+        this.viewMatrixBuffer = MemoryUtil.memAllocFloat(16);
 
-        this.projectionViewMatrix = new Matrix4f();
+        this.projViewMatrix = new Matrix4f();
+        this.projViewMatrixBuffer = MemoryUtil.memAllocFloat(16);
+
         this.frustumIntersection = new FrustumIntersection();
     }
 
     /*
-       Projection / View Matrix
+       Proj Matrix
      */
 
     @Override
-    public void updateProjectionMatrix(float fov, float aspectRatio, float zNear, float zFar) {
-        projectionMatrix.identity()
-                .perspective(Math.toRadians(fov), aspectRatio, zNear, zFar);
+    public void updateProjMatrix(float fov, float aspectRatio, float zNear, float zFar) {
+        projMatrix.identity().perspective(Math.toRadians(fov), aspectRatio, zNear, zFar);
+        projMatrix.get(projMatrixBuffer.clear());
 
-        projectionMatrix.get(projMatrixBuffer.clear());
-
-        projectionViewMatrix.set(projectionMatrix).mul(viewMatrix);
-        frustumIntersection.set(projectionViewMatrix);
+        updateViewFrustum();
     }
 
     @Override
-    public void updateViewMatrix(Vector3f position, Vector3f rotation) {
-        viewMatrix.identity()
-                .rotateX(Math.toRadians(rotation.x()))
-                .rotateY(Math.toRadians(rotation.y()))
-                .rotateZ(Math.toRadians(rotation.z()))
-
-                .translate(-position.x(), -position.y(), -position.z());
-
-        projectionViewMatrix.set(projectionMatrix).mul(viewMatrix);
-        frustumIntersection.set(projectionViewMatrix);
+    public Matrix4f projectionMatrix() {
+        return projMatrix;
     }
 
-    /*
-       Model View Matrix
-     */
-
-    public Matrix4f updateModelViewMatrix(Vector3f position) {
-        modelViewMatrix.identity()
-                .translate(position);
-
-        return new Matrix4f(viewMatrix).mul(modelViewMatrix);
-    }
-
-    public FloatBuffer getProjectionMatrix() {
+    @Override
+    public FloatBuffer projectionMatrixBuffer() {
         return projMatrixBuffer;
     }
 
     /*
-       Frustum
+       View Matrix
      */
 
     @Override
-    public FrustumIntersection getFrustumIntersection() {
+    public void updateViewMatrix(Vector3f position, Vector2f rotation) {
+        viewMatrix.identity()
+                .rotateX(Math.toRadians(rotation.x()))
+                .rotateY(Math.toRadians(rotation.y()))
+                .translate(-position.x(), -position.y(), -position.z());
+
+        viewMatrix.get(viewMatrixBuffer.clear());
+        updateViewFrustum();
+    }
+
+    @Override
+    public Matrix4f viewMatrix() {
+        return viewMatrix;
+    }
+
+    @Override
+    public FloatBuffer viewMatrixBuffer() {
+        return viewMatrixBuffer;
+    }
+
+    /*
+       Proj View Matrix
+     */
+
+    @Override
+    public Matrix4f projViewMatrix() {
+        return projViewMatrix;
+    }
+
+    @Override
+    public FloatBuffer projViewMatrixBuffer() {
+        return projViewMatrixBuffer;
+    }
+
+    /*
+       View Frustum
+     */
+
+    private void updateViewFrustum() {
+        projViewMatrix.set(projMatrix).mul(viewMatrix);
+        frustumIntersection.set(projViewMatrix);
+
+        projViewMatrix.get(projViewMatrixBuffer.clear());
+    }
+
+    @Override
+    public FrustumIntersection frustumIntersection() {
         return frustumIntersection;
     }
 
-    public void destroy() {
+    /*
+       Dispose
+     */
+
+    @Override
+    public void dispose() {
         MemoryUtil.memFree(projMatrixBuffer);
+        MemoryUtil.memFree(viewMatrixBuffer);
+        MemoryUtil.memFree(projViewMatrixBuffer);
     }
 }

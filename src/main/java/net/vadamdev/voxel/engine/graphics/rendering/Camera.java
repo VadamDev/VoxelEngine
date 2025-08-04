@@ -1,68 +1,81 @@
 package net.vadamdev.voxel.engine.graphics.rendering;
 
-import net.vadamdev.voxel.engine.graphics.rendering.editor.IViewMatrixEditor;
-import net.vadamdev.voxel.engine.objects.GameObject;
-import net.vadamdev.voxel.engine.objects.Rotatable;
+import net.vadamdev.voxel.engine.graphics.rendering.matrix.IProjViewContainer;
+import net.vadamdev.voxel.engine.window.Window;
 import org.joml.Math;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 
 /**
  * @author VadamDev
  * @since 03/02/2025
  */
-public class Camera extends GameObject implements Rotatable {
-    private final Vector3f position, rotation;
+public class Camera {
+    private final Vector3f position;
+    private final Vector2f rotation;
 
-    public Camera(Vector3f position, Vector3f rotation) {
+    private final Window window;
+    private final IProjViewContainer projViewContainer;
+
+    public float fov = 90;
+    public float nearClipPlane = 0.1f, farClipPlane = 8192f;
+
+    public Camera(Vector3f position, Vector2f rotation, Window window, IProjViewContainer projViewContainer) {
         this.position = position;
         this.rotation = rotation;
+
+        this.window = window;
+        this.projViewContainer = projViewContainer;
+
+        window.onResize(() -> projViewContainer.updateProjMatrix(fov, window.getAspectRatio(), nearClipPlane, farClipPlane));
+
+        updateProjectionMatrix();
+        updateViewMatrix();
     }
 
-    public Camera(Vector3f position) {
-        this(position, new Vector3f());
+    public Camera(Vector3f position, Window window, IProjViewContainer projViewContainer) {
+        this(position, new Vector2f(), window, projViewContainer);
     }
 
-    public Camera() {
-        this(new Vector3f(), new Vector3f());
+    public Camera(Window window, IProjViewContainer projViewContainer) {
+        this(new Vector3f(), window, projViewContainer);
     }
 
     /*
-       View matrix
+       Matrices
      */
 
-    public void updateViewMatrix(IViewMatrixEditor viewMatrixEditor) {
-        viewMatrixEditor.updateViewMatrix(position, rotation);
+    public void updateViewMatrix() {
+        projViewContainer.updateViewMatrix(position, rotation);
+    }
+
+    public void updateProjectionMatrix() {
+        projViewContainer.updateProjMatrix(fov, window.getAspectRatio(), nearClipPlane, farClipPlane);
     }
 
     /*
        Getters & Setters
      */
 
-    @Override
     public Vector3f position() {
         return position;
     }
 
-    @Override
-    public Vector3f rotation() {
+    public Vector2f rotation() {
         return rotation;
     }
 
-    public float getYaw() {
+    public float yaw() {
         return Math.toRadians(rotation.y() + 180);
     }
 
-    public float getPitch() {
+    public float pitch() {
         return Math.toRadians(rotation.x());
     }
 
-    public float getRoll() {
-        return Math.toRadians(rotation.z());
-    }
-
     public Vector3f getDirection() {
-        final float yaw = getYaw();
-        final float pitch = getPitch();
+        final float yaw = yaw();
+        final float pitch = pitch();
 
         final Vector3f result = new Vector3f();
 

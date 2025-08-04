@@ -4,43 +4,42 @@ import net.vadamdev.voxel.engine.graphics.shaders.exceptions.ShaderCompileExcept
 import net.vadamdev.voxel.engine.graphics.shaders.exceptions.ShaderException;
 import net.vadamdev.voxel.engine.graphics.shaders.exceptions.ShaderLinkException;
 import net.vadamdev.voxel.engine.graphics.shaders.exceptions.ShaderValidateException;
+import net.vadamdev.voxel.engine.utils.Disposable;
 import net.vadamdev.voxel.engine.utils.FileUtils;
-import org.joml.Matrix4f;
-import org.joml.Vector2f;
-import org.joml.Vector3f;
-import org.lwjgl.system.MemoryStack;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.FloatBuffer;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static org.lwjgl.opengl.GL20.*;
 
 /**
  * @author VadamDev
- * @since 03/02/2025
+ * @since 15/07/2025
  */
-public class ShaderProgram {
-    private final String vertexShaderSource, fragmentShaderSource;
+public abstract class ShaderProgram implements Disposable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ShaderProgram.class);
 
-    private int vertexShader, fragmentShader;
-    private int programId;
+    protected final String vertexShaderPath, fragmentShaderPath;
 
-    private final Map<String, Integer> uniforms;
+    protected int vertexShader, fragmentShader;
+    protected int programId;
 
-    public ShaderProgram(String vertexShaderPath, String fragmentShaderPath) throws IOException {
-        this.vertexShaderSource = FileUtils.readFile(vertexShaderPath);
-        this.fragmentShaderSource = FileUtils.readFile(fragmentShaderPath);
-
-        this.uniforms = new HashMap<>();
+    public ShaderProgram(String vertexShaderPath, String fragmentShaderPath) {
+        this.vertexShaderPath = vertexShaderPath;
+        this.fragmentShaderPath = fragmentShaderPath;
     }
 
-    public void create() throws ShaderException {
+    public void create() throws IOException, ShaderException, NullPointerException {
         programId = glCreateProgram();
 
-        vertexShader = createShader(vertexShaderSource, GL_VERTEX_SHADER);
-        fragmentShader = createShader(fragmentShaderSource, GL_FRAGMENT_SHADER);
+        vertexShader = createShader(FileUtils.readFile(vertexShaderPath), GL_VERTEX_SHADER);
+        fragmentShader = createShader(FileUtils.readFile(fragmentShaderPath), GL_FRAGMENT_SHADER);
 
         glAttachShader(programId, vertexShader);
         glAttachShader(programId, fragmentShader);
@@ -55,6 +54,22 @@ public class ShaderProgram {
 
         glDetachShader(programId, vertexShader);
         glDetachShader(programId, fragmentShader);
+
+        setupUniforms();
+    }
+
+    private int createShader(String source, int type) throws ShaderException {
+        final int shaderId = glCreateShader(type);
+        if(shaderId == 0)
+            throw new ShaderException("An error occurred while creating a shader with type: " + ShaderException.formatShaderType(type) + " (programId=" + programId + ")");
+
+        glShaderSource(shaderId, source);
+        glCompileShader(shaderId);
+
+        if(glGetShaderi(shaderId, GL_COMPILE_STATUS) == 0)
+            throw new ShaderCompileException(type, shaderId);
+
+        return shaderId;
     }
 
     /*
@@ -70,68 +85,62 @@ public class ShaderProgram {
     }
 
     /*
-       Uniforms
+       Uniform
      */
 
-    public void createUniform(String name) {
+    protected abstract void setupUniforms();
+
+    @Nullable
+    public UniformAccess accessUniform(String name) {
         final int location = glGetUniformLocation(programId, name);
         if(location < 0)
-            throw new NullPointerException("Failed to find a uniform with name: " + name);
+            return null;
 
-        uniforms.put(name, location);
+        return new UniformAccess(location);
     }
 
-    public void setUniform1f(String name, float value) {
-        glUniform1f(uniforms.get(name), value);
-    }
+    @Nullable
+    public <T extends GLSLStruct> StructAccess<T> accessStruct(String name, Supplier<T> defaultValue) {
+        final T value = defaultValue.get();
 
-    public void setUniform1i(String name, int value) {
-        glUniform1i(uniforms.get(name), value);
-    }
+        final Map<String, IUniformAccess> uniforms = new HashMap<>();
+        for(Field field : value.getClass().getDeclaredFields()) {
+            if(field.isAnnotationPresent(GLSLStruct.Shadow.class))
+                continue;
 
-    public void setUniform2f(String name, Vector2f vector) {
-        glUniform2f(uniforms.get(name), vector.x(), vector.y());
-    }
+            String fieldName = field.getName();
 
-    public void setUniform3f(String name, Vector3f vector) {
-        glUniform3f(uniforms.get(name), vector.x(), vector.y(), vector.z());
-    }
+            final GLSLStruct.Uniform parameters = field.getAnnotation(GLSLStruct.Uniform.class);
+            if(parameters != null)
+                fieldName = parameters.name();
 
-    public void setUniform4fv(String name, FloatBuffer matrix) {
-        glUniformMatrix4fv(uniforms.get(name), false, matrix);
-    }
+            final String location = name + "." + fieldName;
+            IUniformAccess access = accessUniform(location);
+            if(access == null) {
+                LOGGER.warn("Failed to find uniform \"" + location + "\" in glsl struct: " + value.getClass().getSimpleName());
+                access = IUniformAccess.EMPTY;
+            }
 
-    public void setUniform4fv(String name, Matrix4f value) {
-        try(MemoryStack stack = MemoryStack.stackPush()) {
-            final FloatBuffer buffer = stack.mallocFloat(16);
-            glUniformMatrix4fv(uniforms.get(name), false, value.get(buffer));
+            uniforms.put(fieldName, access);
         }
+
+        if(uniforms.isEmpty())
+            return null;
+
+        return new StructAccess<>(uniforms, value);
     }
 
     /*
-       Utility Methods
+       Cleanup
      */
 
-    public void destroy() {
+    @Override
+    public void dispose() {
         unbind();
 
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
 
         glDeleteProgram(programId);
-    }
-
-    private int createShader(String source, int type) throws ShaderException {
-        final int shaderId = glCreateShader(type);
-        if(shaderId == 0)
-            throw new ShaderException("An error occurred while creating a shader with type: " + ShaderException.formatShaderType(type) + " (programId=" + programId + ")");
-
-        glShaderSource(shaderId, source);
-        glCompileShader(shaderId);
-
-        if(glGetShaderi(shaderId, GL_COMPILE_STATUS) == 0)
-            throw new ShaderCompileException(type, shaderId);
-
-        return shaderId;
     }
 }

@@ -1,38 +1,37 @@
 package net.vadamdev.voxel.engine;
 
-import net.vadamdev.voxel.engine.loop.*;
+import net.vadamdev.voxel.engine.loop.FixedStepLoop;
+import net.vadamdev.voxel.engine.loop.IGameLogic;
 import net.vadamdev.voxel.engine.window.Window;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author VadamDev
- * @since 03/02/2025
+ * @since 29/06/2025
  */
-public abstract class AbstractGame implements IGameLoop, ITaskHandler {
-    protected final Window window;
-    private final ILoop loop;
+public abstract class AbstractGame<W extends Window> implements IGameLogic {
+    protected final Logger logger;
 
-    public AbstractGame(Window window) {
-        this.window = window;
-        this.loop = new FixedStepLoop(window, this);
-    }
+    protected W window;
+    protected FixedStepLoop gameLoop;
 
-    public AbstractGame(Window window, ILoop loop) {
+    public AbstractGame(W window) {
+        this.logger = LoggerFactory.getLogger(getClass());
+
         this.window = window;
-        this.loop = loop;
+        this.gameLoop = new FixedStepLoop(window, this);
     }
 
     public void start() {
-        window.create();
-
-        loop.start();
+        gameLoop.start();
     }
 
-    public void stop() {
-        loop.stop();
+    public float getCurrentFrameTime() {
+        return gameLoop.getCurrentFrameTime();
     }
 
-    @Override
-    public void runTask(RunContext context, Runnable task) {
-        loop.runTask(context, task);
+    public Logger getLogger() {
+        return logger;
     }
 }

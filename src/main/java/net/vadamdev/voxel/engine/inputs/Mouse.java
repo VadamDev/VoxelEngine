@@ -31,6 +31,10 @@ public enum Mouse {
         keyCode = mouseButton.keyCode;
     }
 
+    public boolean isPressed() {
+        return isButtonDown(keyCode);
+    }
+
     public int keyCode() {
         return keyCode;
     }

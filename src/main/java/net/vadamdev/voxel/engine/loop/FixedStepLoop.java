@@ -1,173 +1,187 @@
 package net.vadamdev.voxel.engine.loop;
 
 import net.vadamdev.voxel.engine.window.Window;
-import org.joml.Math;
 
-import java.util.Deque;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * @author VadamDev
- * @since 03/02/2025
+ * @since 29/06/2025
  */
-public final class FixedStepLoop implements ILoop {
-    private static final int TARGET_UPS = 20;
-    private static final int TARGET_FPS = 60;
+public class FixedStepLoop implements Runnable {
+    public static final int DEFAULT_TARGET_UPS = 20;
+    public static final int DEFAULT_TARGET_FPS = 60;
+
+    private static final double NANO = 1e9d;
 
     private final Window window;
-    private final IGameLoop game;
+    private final IGameLogic game;
 
+    private final Thread thread;
     private boolean running;
 
-    private final Deque<Runnable> updatesTasks, renderTasks;
+    private final Queue<Runnable> tasks;
 
     private int targetUps, targetFps;
     private double updateTime, renderTime;
 
     private int ups, fps;
+    private double msPerUpdateAvg, msPerFrameAvg;
+    private float currentFrameTime;
 
-    public FixedStepLoop(Window window, IGameLoop game) {
+    public FixedStepLoop(Window window, IGameLogic game) {
         this.window = window;
         this.game = game;
 
+        this.thread = new Thread(this, "Main Thread");
         this.running = false;
 
-        this.updatesTasks = new ConcurrentLinkedDeque<>();
-        this.renderTasks = new ConcurrentLinkedDeque<>();
+        this.tasks = new ConcurrentLinkedQueue<>();
 
-        this.targetUps = TARGET_UPS;
-        this.targetFps = TARGET_FPS;
+        this.targetUps = DEFAULT_TARGET_UPS;
+        this.targetFps = DEFAULT_TARGET_FPS;
 
-        //TODO: remove this hacky way of doing things
-        this.ups = targetUps;
-        this.fps = targetFps;
+        this.updateTime = NANO / targetUps;
+        this.renderTime = NANO / targetFps;
     }
 
-    @Override
     public void start() {
         if(running)
-            return;
+            throw new IllegalStateException("The game loop is already running");
 
         running = true;
-
-        loop();
+        thread.start();
     }
 
-    @Override
-    public void runTask(RunContext context, Runnable task) {
-        switch(context) {
-            case UPDATE:
-                updatesTasks.add(task);
-                break;
-            case RENDER:
-                renderTasks.add(task);
-                break;
-            default:
-                break;
-        }
-    }
-
-    @Override
     public void stop() {
         if(!running)
-            return;
+            throw new IllegalStateException("The game loop is already stopped");
 
         running = false;
     }
 
-    private void loop() {
-        updateTime = 1000000000d / targetUps;
-        renderTime = 1000000000d / targetFps;
+    @Override
+    public void run() {
+        try {
+            window.init();
+            game.init();
+        }catch(Exception e) {
+            System.err.println("Failed to initialize the game:");
+            e.printStackTrace();
 
-        long lastUpdateTime = System.nanoTime();
-        long lastRenderTime = System.nanoTime();
+            return;
+        }
 
+        long lastUpdateTime = System.nanoTime(), lastRenderTime = System.nanoTime();
         int updates = 0, frames = 0;
+        double msPerUpdate = 0, msPerFrame = 0;
 
         long timer = System.currentTimeMillis();
-
-        game.init(this);
 
         while(running && !window.shouldClose()) {
             final long now = System.nanoTime();
 
             if(now - lastUpdateTime > updateTime) {
-                if(!updatesTasks.isEmpty()) {
-                    Runnable task;
-                    while((task = updatesTasks.poll()) != null)
-                        task.run();
-                }
-
                 game.update();
 
-                updates++;
+                msPerUpdate += (System.nanoTime() - now) / 1e6d;
 
+                updates++;
                 lastUpdateTime = now;
             }else if(now - lastRenderTime > renderTime) {
-                if(!renderTasks.isEmpty()) {
-                    Runnable task;
-                    while((task = renderTasks.poll()) != null)
-                        task.run();
+                currentFrameTime = now / 1e9f;
+                final float deltaTime = (now - lastRenderTime) / 1e9f;
+
+                try {
+                    if(!tasks.isEmpty()) {
+                        Runnable task;
+                        while((task = tasks.poll()) != null)
+                            task.run();
+                    }
+
+                    game.processInputs(deltaTime);
+
+                    window.update();
+                    game.render(deltaTime);
+                    window.swapBuffers();
+                }catch (Exception e) {
+                    System.err.println("An error occurred while rendering frame:");
+                    e.printStackTrace();
+
+                    break;
                 }
 
-                game.processInputs(60f / Math.max(1, fps));
-
-                window.update();
-                game.render();
-                window.swapBuffers();
+                msPerFrame += (System.nanoTime() - now) / 1e6;
 
                 frames++;
-
                 lastRenderTime = now;
             }
 
-            final long nowMs = System.currentTimeMillis();
-            if(nowMs - timer > 1000) {
+            if(System.currentTimeMillis() - timer > 1000) {
                 ups = updates;
                 fps = frames;
+
+                msPerUpdateAvg = msPerUpdate / Math.max(1, updates);
+                msPerFrameAvg = msPerFrame / Math.max(1, frames);
 
                 updates = 0;
                 frames = 0;
 
-                timer = nowMs;
+                msPerUpdate = 0;
+                msPerFrame = 0;
+
+                timer += 1000;
+
+                System.out.println(String.format("FPS: %s (%.3f ms) | UPS: %s (%.3f ms)", fps, msPerFrameAvg, ups, msPerUpdateAvg));
             }
         }
 
-        game.cleanup();
-        window.destroy();
+        running = false;
+
+        game.dispose();
+        window.dispose();
     }
 
-    @Override
-    public int getUPS() {
-        return ups;
+    public void submitTask(Runnable runnable) {
+        tasks.add(runnable);
     }
 
-    @Override
-    public int getFPS() {
-        return fps;
+    public void setTargetUps(int targetUps) {
+        this.targetUps = targetUps;
+        this.updateTime = NANO / targetUps;
     }
 
-    @Override
     public int getTargetUps() {
         return targetUps;
     }
 
-    @Override
+    public void setTargetFps(int targetFps) {
+        this.targetFps = targetFps;
+        this.renderTime = NANO / targetFps;
+    }
+
     public int getTargetFps() {
         return targetFps;
     }
 
-    @Override
-    public void setTargetUps(int targetUps) {
-        this.targetUps = targetUps;
-
-        this.updateTime = 1000000000d / targetUps;
+    public int getUps() {
+        return ups;
     }
 
-    @Override
-    public void setTargetFps(int targetFps) {
-        this.targetFps = targetFps;
+    public double getMsPerUpdateAvg() {
+        return msPerUpdateAvg;
+    }
 
-        this.renderTime = 1000000000d / targetFps;
+    public int getFps() {
+        return fps;
+    }
+
+    public double getMsPerFrameAvg() {
+        return msPerFrameAvg;
+    }
+
+    public float getCurrentFrameTime() {
+        return currentFrameTime;
     }
 }

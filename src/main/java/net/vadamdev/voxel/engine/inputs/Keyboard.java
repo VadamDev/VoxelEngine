@@ -136,6 +136,10 @@ public enum Keyboard {
         this.keyCode = keyCode;
     }
 
+    public boolean isPressed() {
+        return isKeyDown(keyCode);
+    }
+
     public int keyCode() {
         return keyCode;
     }

@@ -1,17 +1,39 @@
 plugins {
     id 'java'
+    id 'application'
+    id 'com.gradleup.shadow' version '8.3.1'
+}
+
+wrapper {
+    gradleVersion = "8.5"
+    distributionType = Wrapper.DistributionType.ALL
+}
+
+compileJava {
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainClass = 'net.vadamdev.voxel.VoxelGame'
+    applicationDefaultJvmArgs = ['-Djoml.fastmath']
 }
 
 group = 'net.vadamdev.voxel'
-version = '0.0.1'
+version = 'Alpha 0.2'
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    implementation platform("org.lwjgl:lwjgl-bom:$lwjglVersion")
+    //Logging
+    implementation "org.slf4j:slf4j-api:2.0.17"
+    implementation "uk.org.lidalia:sysout-over-slf4j:1.0.2"
+    runtimeOnly "ch.qos.logback:logback-classic:${logbackVersion}"
 
+    //LWJGL
+    implementation platform("org.lwjgl:lwjgl-bom:${lwjglVersion}")
     implementation "org.lwjgl:lwjgl"
     implementation "org.lwjgl:lwjgl-assimp"
     implementation "org.lwjgl:lwjgl-glfw"
@@ -19,15 +41,18 @@ dependencies {
     implementation "org.lwjgl:lwjgl-opengl"
     implementation "org.lwjgl:lwjgl-stb"
 
-    implementation "org.joml:joml:${jomlVersion}"
-    implementation "io.github.spair:imgui-java-app:${imguiVersion}"
+    runtimeOnly "org.lwjgl:lwjgl::${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl-assimp::${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl-glfw::${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl-openal::${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl-opengl::${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl-stb::${lwjglNatives}"
 
-    runtimeOnly "org.lwjgl:lwjgl::$lwjglNatives"
-    runtimeOnly "org.lwjgl:lwjgl-assimp::$lwjglNatives"
-    runtimeOnly "org.lwjgl:lwjgl-glfw::$lwjglNatives"
-    runtimeOnly "org.lwjgl:lwjgl-openal::$lwjglNatives"
-    runtimeOnly "org.lwjgl:lwjgl-opengl::$lwjglNatives"
-    runtimeOnly "org.lwjgl:lwjgl-stb::$lwjglNatives"
+    //Additional Dependencies
+    implementation "org.joml:joml:${jomlVersion}"
+    implementation "it.unimi.dsi:fastutil:${fastutilVersion}"
+    implementation "io.github.spair:imgui-java-app:${imguiVersion}"
+    implementation "com.googlecode.json-simple:json-simple:${jsonSimpleVersion}"
 
     compileOnly group: "org.jetbrains", name: 'annotations', version: "${jetbrains_annotations_version}"
 }
