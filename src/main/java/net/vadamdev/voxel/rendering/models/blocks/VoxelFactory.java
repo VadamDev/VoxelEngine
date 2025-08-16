@@ -1,15 +1,14 @@
 package net.vadamdev.voxel.rendering.models.blocks;
 
 import net.vadamdev.voxel.rendering.terrain.ao.AOBlockGroup;
-import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMesh;
+import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshBase;
+import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshes;
 import net.vadamdev.voxel.rendering.terrain.texture.FaceUVs;
 import net.vadamdev.voxel.world.Direction;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-
-import static net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshFactory.*;
 
 /**
  * @author VadamDev
@@ -19,12 +18,12 @@ public class VoxelFactory {
     public static final float VOXEL_SIZE = 16; //Defines voxel size precision
 
     private static final int[][] AO_INDEXES = new int[][] {
-            new int[] { 2, 1, 0, 2, 3, 1 }, // +X
-            new int[] { 2, 3, 1, 2, 1, 0 }, // -X
-            new int[] { 2, 3, 1, 2, 1, 0 }, // +Y
-            new int[] { 1, 2, 3, 1, 0, 2 }, // -Y
-            new int[] { 3, 1, 2, 0, 2, 1 }, // +Z
-            new int[] { 3, 1, 2, 0, 2, 1 }, // -Z
+            { 2, 1, 0, 2, 3, 1 }, // +X
+            { 2, 3, 1, 2, 1, 0 }, // -X
+            { 2, 3, 1, 2, 1, 0 }, // +Y
+            { 1, 2, 3, 1, 0, 2 }, // -Y
+            { 3, 1, 2, 0, 2, 1 }, // +Z
+            { 3, 1, 2, 0, 2, 1 }, // -Z
     };
 
     private final FaceUVs[] uvs;
@@ -196,33 +195,34 @@ public class VoxelFactory {
         }
     }
 
-    public void bakeVerticesToWorld(ChunkMesh.Data meshData, int dX, int dY, int dZ, int adjacentBlocks, AOBlockGroup.Face[] aoGroup) {
-        if(isFacePresent(posXPlane) && (!isDirCulled(Direction.NORTH) || (adjacentBlocks & BITMASK_POS_X) == 0))
+    public void bakeVerticesToWorld(ChunkMeshBase.Data meshData, int dX, int dY, int dZ, int adjacentBlocks, AOBlockGroup.Face[] aoGroup) {
+        if(isFacePresent(posXPlane) && (!isDirCulled(Direction.NORTH) || (adjacentBlocks & Direction.NORTH.bitMask()) == 0))
             addFace(posXPlane, posXUv, AO_INDEXES[0], dX, dY, dZ, meshData, calculateAO(Direction.NORTH, aoGroup));
 
-        if(isFacePresent(negXPlane) && (!isDirCulled(Direction.SOUTH) || (adjacentBlocks & BITMASK_NEG_X) == 0))
+        if(isFacePresent(negXPlane) && (!isDirCulled(Direction.SOUTH) || (adjacentBlocks & Direction.SOUTH.bitMask()) == 0))
             addFace(negXPlane, negXUv, AO_INDEXES[1], dX, dY, dZ, meshData, calculateAO(Direction.SOUTH, aoGroup));
 
-        if(isFacePresent(posYPlane) && (!isDirCulled(Direction.UP) || (adjacentBlocks & BITMASK_POS_Y) == 0))
+        if(isFacePresent(posYPlane) && (!isDirCulled(Direction.UP) || (adjacentBlocks & Direction.UP.bitMask()) == 0))
             addFace(posYPlane, posYUv, AO_INDEXES[2], dX, dY, dZ, meshData, calculateAO(Direction.UP, aoGroup));
 
-        if(isFacePresent(negYPlane) && (!isDirCulled(Direction.DOWN) || (adjacentBlocks & BITMASK_NEG_Y) == 0))
+        if(isFacePresent(negYPlane) && (!isDirCulled(Direction.DOWN) || (adjacentBlocks & Direction.DOWN.bitMask()) == 0))
             addFace(negYPlane, negYUv, AO_INDEXES[3], dX, dY, dZ, meshData, calculateAO(Direction.DOWN, aoGroup));
 
-        if(isFacePresent(posZPlane) && (!isDirCulled(Direction.EAST) || (adjacentBlocks & BITMASK_POS_Z) == 0))
+        if(isFacePresent(posZPlane) && (!isDirCulled(Direction.EAST) || (adjacentBlocks & Direction.EAST.bitMask()) == 0))
             addFace(posZPlane, posZUv, AO_INDEXES[4], dX, dY, dZ, meshData, calculateAO(Direction.EAST, aoGroup));
 
-        if(isFacePresent(negZPlane) && (!isDirCulled(Direction.WEST) || (adjacentBlocks & BITMASK_NEG_Z) == 0))
+        if(isFacePresent(negZPlane) && (!isDirCulled(Direction.WEST) || (adjacentBlocks & Direction.WEST.bitMask()) == 0))
             addFace(negZPlane, negZUv, AO_INDEXES[5], dX, dY, dZ, meshData, calculateAO(Direction.WEST, aoGroup));
     }
 
-    private void addFace(float[] plane, float[] uvs, int[] aoIndex, int dX, int dY, int dZ, ChunkMesh.Data meshData, byte[] ao) {
+    private void addFace(float[] plane, float[] uvs, int[] aoIndex, int dX, int dY, int dZ, ChunkMeshBase.Data meshData, byte[] ao) {
         for(int i = 0; i < plane.length; i += 3) {
             meshData.verticesBuffer.put(plane[i] + dX);
             meshData.verticesBuffer.put(plane[i + 1] + dY);
             meshData.verticesBuffer.put(plane[i + 2] + dZ);
 
-            meshData.aoBuffer.put(ao[aoIndex[i / 3]]);
+            if(meshData instanceof ChunkMeshes.Solid.SolidData solidData)
+                solidData.aoBuffer.put(ao[aoIndex[i / 3]]);
         }
 
         if(uvs != null && uvs.length > 0)
@@ -238,10 +238,10 @@ public class VoxelFactory {
     }
 
     private byte[] calculateAO(Direction direction, AOBlockGroup.Face[] aoGroup) {
-        if(aoGroup[direction.index()] == null)
+        if(aoGroup[direction.ordinal()] == null)
             return new byte[4];
 
-        return aoGroup[direction.index()].calculateAO();
+        return aoGroup[direction.ordinal()].calculateAO();
     }
 
     private void rotatePlane(float[] plane) {

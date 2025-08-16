@@ -4,22 +4,18 @@ import net.vadamdev.voxel.engine.graphics.mesh.VertexArrayObject;
 import net.vadamdev.voxel.engine.graphics.rendering.Renderable;
 import net.vadamdev.voxel.engine.utils.Disposable;
 import net.vadamdev.voxel.rendering.models.blocks.VoxelFactory;
-import net.vadamdev.voxel.rendering.models.blocks.VoxelTextureRef;
 import net.vadamdev.voxel.rendering.terrain.ao.AOBlockGroup;
-import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMesh;
+import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshes;
 import net.vadamdev.voxel.rendering.terrain.texture.FaceUVs;
 import net.vadamdev.voxel.world.chunk.Chunk;
 import org.joml.Vector3i;
-import org.lwjgl.system.MemoryUtil;
-
-import java.nio.FloatBuffer;
 
 /**
  * @author VadamDev
  * @since 15/06/2025
  */
 public class ChunkDebugBorder implements Renderable, Disposable {
-    private ChunkMesh.Data meshData;
+    private ChunkMeshes.Solid.Data meshData;
     private VertexArrayObject vao;
 
     public ChunkDebugBorder() {
@@ -31,7 +27,7 @@ public class ChunkDebugBorder implements Renderable, Disposable {
                 FaceUVs.newVoxelUVs()
         );
 
-        meshData = new ChunkMesh.Data();
+        meshData = new ChunkMeshes.Solid.Data();
 
         for(int x = 0; x < Chunk.CHUNK_WIDTH; x++) {
             outlineMesh.bakeVerticesToWorld(meshData, x, 0,              0,             0, AOBlockGroup.EMPTY);

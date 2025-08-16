@@ -3,9 +3,13 @@ package net.vadamdev.voxel.rendering.terrain.mesh;
 import net.vadamdev.voxel.VoxelGame;
 import net.vadamdev.voxel.engine.graphics.rendering.Renderable;
 import net.vadamdev.voxel.engine.utils.Disposable;
+import net.vadamdev.voxel.engine.utils.Pointer;
+import net.vadamdev.voxel.rendering.terrain.ChunkMeshFactory;
 import net.vadamdev.voxel.world.chunk.Chunk;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3i;
+
+import java.util.function.Function;
 
 /**
  * @author VadamDev
@@ -14,14 +18,23 @@ import org.joml.Vector3i;
 public class ChunkMeshUnion implements Disposable {
     private static final ChunkMeshFactory MESH_FACTORY = VoxelGame.get().getChunkMeshFactory();
 
+    //Position
     private final Vector3i chunkPos, worldPosition;
 
-    private ChunkMesh solidMesh, waterMesh;
-    public volatile boolean canBuildMesh = true;
+    //Meshes
+    private final Pointer<ChunkMeshes.Solid> solidMeshPtr;
+    private final Pointer<ChunkMeshes.Water> waterMeshPtr;
+
+    private volatile boolean canBuildMesh;
 
     public ChunkMeshUnion(Vector3i chunkPos) {
         this.chunkPos = chunkPos;
-        worldPosition = new Vector3i(chunkPos).mul(Chunk.CHUNK_WIDTH, Chunk.CHUNK_HEIGHT, Chunk.CHUNK_DEPTH);
+        this.worldPosition = new Vector3i(chunkPos).mul(Chunk.CHUNK_WIDTH, Chunk.CHUNK_HEIGHT, Chunk.CHUNK_DEPTH);
+
+        this.solidMeshPtr = Pointer.empty(ChunkMeshes.Solid.class);
+        this.waterMeshPtr = Pointer.empty(ChunkMeshes.Water.class);
+
+        this.canBuildMesh = true;
     }
 
     public void constructMeshAsync(Chunk chunk) {
@@ -29,15 +42,14 @@ public class ChunkMeshUnion implements Disposable {
             return;
 
         canBuildMesh = false;
-        MESH_FACTORY.constructMeshAsync(chunk).whenComplete((result, throwable) -> {
+        MESH_FACTORY.constructMeshAsync(chunk).whenComplete((result, throwable) -> VoxelGame.runOnMainThread(() -> {
             if(result.isEmpty())
                 VoxelGame.get().getWorldRenderer().removeChunk(chunkPos);
             else
-                VoxelGame.runOnMainThread(() -> {
-                    createOrUpdate(result);
-                    canBuildMesh = true;
-                });
-        });
+                createOrUpdateMeshes(result);
+
+            canBuildMesh = true;
+        }));
     }
 
     public void constructMeshSync(Chunk chunk) {
@@ -45,52 +57,22 @@ public class ChunkMeshUnion implements Disposable {
             return;
 
         canBuildMesh = false;
-        createOrUpdate(MESH_FACTORY.constructMeshSync(chunk));
+        createOrUpdateMeshes(MESH_FACTORY.constructMeshSync(chunk));
         canBuildMesh = true;
     }
 
-    private void createOrUpdate(ChunkMeshUnionData meshData) {
-        final ChunkMesh.Data solidMeshData = meshData.solidMesh();
-        final ChunkMesh.Data waterMeshData = meshData.waterMesh();
-
-        if(solidMeshData != null) {
-            try {
-                if(solidMesh == null || solidMesh.isDestroyed())
-                    solidMesh = new ChunkMesh(solidMeshData);
-                else
-                    solidMesh.updateBuffers(solidMeshData);
-            }finally {
-                solidMeshData.free();
-            }
-        }else if(solidMesh != null) {
-            solidMesh.dispose();
-            solidMesh = null;
-        }
-
-        if(waterMeshData != null) {
-            try {
-                if(waterMesh == null || waterMesh.isDestroyed())
-                    waterMesh = new ChunkMesh(waterMeshData);
-                else
-                    waterMesh.updateBuffers(waterMeshData);
-            }finally {
-                waterMeshData.free();
-            }
-        }else if(waterMesh != null) {
-            waterMesh.dispose();
-            waterMesh = null;
-        }
+    private void createOrUpdateMeshes(Data unionData) {
+        createOrUpdateMesh(unionData.solidMeshData(), solidMeshPtr, ChunkMeshes.Solid::new);
+        createOrUpdateMesh(unionData.waterMeshData(), waterMeshPtr, ChunkMeshes.Water::new);
     }
 
     @Override
     public void dispose() {
-        if(solidMesh != null && !solidMesh.isDestroyed())
-            solidMesh.dispose();
-
-        if(waterMesh != null && !waterMesh.isDestroyed())
-            waterMesh.dispose();
+        disposeMesh(solidMeshPtr);
+        disposeMesh(waterMeshPtr);
     }
 
+    //Position
     public Vector3i position() {
         return chunkPos;
     }
@@ -99,17 +81,59 @@ public class ChunkMeshUnion implements Disposable {
         return worldPosition;
     }
 
+    //Meshes
     @Nullable
     public Renderable solidMesh() {
-        return solidMesh;
+        return solidMeshPtr.get();
     }
 
     @Nullable
     public Renderable waterMesh() {
-        return waterMesh;
+        return waterMeshPtr.get();
     }
 
+    //Utils
     public boolean isEmpty() {
-        return solidMesh == null && waterMesh == null;
+        return solidMeshPtr.isEmpty() && waterMeshPtr.isEmpty();
+    }
+
+    /*
+       Data
+     */
+
+    public record Data(@Nullable ChunkMeshes.Solid.SolidData solidMeshData, @Nullable ChunkMeshBase.Data waterMeshData) {
+        public boolean isEmpty() {
+            return (solidMeshData == null || solidMeshData.isEmpty()) && (waterMeshData == null || waterMeshData.isEmpty());
+        }
+    }
+
+    /*
+       Utils
+     */
+
+    private static <T extends ChunkMeshBase<U>, U extends ChunkMeshBase.Data> void createOrUpdateMesh(@Nullable U meshData, Pointer<T> meshPtr, Function<U, T> newMeshSupplier) {
+        if(meshData != null) {
+            try {
+                final ChunkMeshBase<U> mesh = meshPtr.get();
+
+                if(mesh == null || mesh.isDestroyed())
+                    meshPtr.set(newMeshSupplier.apply(meshData));
+                else
+                    mesh.updateBuffers(meshData);
+            }finally {
+                meshData.free();
+            }
+        }else if(!meshPtr.isEmpty()) {
+            meshPtr.get().dispose();
+            meshPtr.free();
+        }
+    }
+
+    private static <T extends ChunkMeshBase<?>> void disposeMesh(Pointer<T> meshPtr) {
+        final T mesh = meshPtr.get();
+        if(mesh == null || mesh.isDestroyed())
+            return;
+
+        mesh.dispose();
     }
 }

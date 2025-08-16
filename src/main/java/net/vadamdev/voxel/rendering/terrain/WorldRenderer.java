@@ -1,12 +1,10 @@
 package net.vadamdev.voxel.rendering.terrain;
 
-import net.vadamdev.voxel.engine.graphics.rendering.Camera;
 import net.vadamdev.voxel.engine.graphics.rendering.MatrixDrawer;
 import net.vadamdev.voxel.engine.graphics.rendering.Renderable;
 import net.vadamdev.voxel.engine.graphics.shaders.exceptions.ShaderException;
 import net.vadamdev.voxel.engine.graphics.texture.Texture;
 import net.vadamdev.voxel.engine.utils.Disposable;
-import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshFactory;
 import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshUnion;
 import net.vadamdev.voxel.rendering.terrain.shaders.SolidTerrainShader;
 import net.vadamdev.voxel.rendering.terrain.shaders.WaterTerrainShader;
@@ -109,7 +107,7 @@ public class WorldRenderer implements Renderable, Disposable {
         Optional.ofNullable(textureAtlas.getAtlas()).ifPresent(Texture::dispose);
     }
 
-    public void addChunk(Chunk chunk) {
+    public synchronized void addChunk(Chunk chunk) {
         final Vector3i chunkPos = chunk.position();
         if(chunkMeshes.containsKey(chunkPos) || meshFactory.isMeshing(chunkPos))
             return;
@@ -119,7 +117,7 @@ public class WorldRenderer implements Renderable, Disposable {
         union.constructMeshAsync(chunk);
     }
 
-    public void updateChunk(Chunk chunk) {
+    public synchronized void updateChunk(Chunk chunk) {
         final ChunkMeshUnion union = chunkMeshes.get(chunk.position());
         if(union == null)
             return;
@@ -127,7 +125,7 @@ public class WorldRenderer implements Renderable, Disposable {
         union.constructMeshAsync(chunk);
     }
 
-    public void removeChunk(Vector3i chunkPos) {
+    public synchronized void removeChunk(Vector3i chunkPos) {
         final ChunkMeshUnion union = chunkMeshes.get(chunkPos);
         if(union == null)
             return;

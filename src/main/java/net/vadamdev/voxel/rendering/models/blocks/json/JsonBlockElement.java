@@ -71,8 +71,9 @@ public class JsonBlockElement {
         if(facesJson == null)
             return;
 
-        for(Direction dir : Direction.values()) {
-            final int i = dir.index();
+        final Direction[] directions = Direction.readValues();
+        for(int i = 0; i < directions.length; i++) {
+            final Direction dir = directions[i];
 
             final PreemJsonObj faceJson = facesJson.getJsonObject(dir.name().toLowerCase());
             if(faceJson == null)
@@ -101,7 +102,7 @@ public class JsonBlockElement {
 
     private FaceUVs[] bakeUvs() {
         final FaceUVs[] uvs = FaceUVs.newVoxelUVs(false);
-        for(int i = 0; i < Direction.values().length; i++) {
+        for(int i = 0; i < Direction.readValues().length; i++) {
             final VoxelTextureRef textureRef = textureRefs[i];
 
             if(textureRef != null)

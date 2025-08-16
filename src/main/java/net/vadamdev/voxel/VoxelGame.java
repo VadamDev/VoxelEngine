@@ -10,7 +10,7 @@ import net.vadamdev.voxel.engine.inputs.Mouse;
 import net.vadamdev.voxel.engine.window.imgui.ImGuiCapableWindow;
 import net.vadamdev.voxel.rendering.models.BlockModels;
 import net.vadamdev.voxel.rendering.terrain.WorldRenderer;
-import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshFactory;
+import net.vadamdev.voxel.rendering.terrain.ChunkMeshFactory;
 import net.vadamdev.voxel.world.World;
 import net.vadamdev.voxel.world.blocks.Blocks;
 import org.joml.Vector3f;
