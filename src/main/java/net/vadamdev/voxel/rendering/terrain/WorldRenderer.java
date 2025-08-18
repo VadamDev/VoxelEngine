@@ -1,5 +1,6 @@
 package net.vadamdev.voxel.rendering.terrain;
 
+import net.vadamdev.voxel.VoxelGame;
 import net.vadamdev.voxel.engine.graphics.rendering.MatrixDrawer;
 import net.vadamdev.voxel.engine.graphics.rendering.Renderable;
 import net.vadamdev.voxel.engine.graphics.shaders.exceptions.ShaderException;
@@ -22,6 +23,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * @author VadamDev
@@ -83,7 +85,7 @@ public class WorldRenderer implements Renderable, Disposable {
 
         //Chunk debug border
         if(renderChunkBorders)
-            pipeline.renderDebugBorder(debugBorder, this.chunkMeshes.values(), polygonMode);
+            pipeline.renderDebugBorder(debugBorder, chunkMeshes.stream().map(ChunkMeshUnion::worldPosition).collect(Collectors.toSet()), polygonMode);
 
         pipeline.end();
     }

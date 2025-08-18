@@ -7,9 +7,11 @@ import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshUnion;
 import net.vadamdev.voxel.rendering.terrain.shaders.SolidTerrainShader;
 import net.vadamdev.voxel.rendering.terrain.shaders.WaterTerrainShader;
 import net.vadamdev.voxel.rendering.terrain.texture.TerrainTextureAtlas;
+import org.joml.Vector3i;
 import org.lwjgl.opengl.GL11;
 
 import java.util.Collection;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -83,14 +85,14 @@ public class WorldRenderPipeline {
         waterShader.unbind();
     }
 
-    public void renderDebugBorder(ChunkOutlineMesh debugBorder, Collection<ChunkMeshUnion> chunkMeshes, int polygonMode) {
+    public void renderDebugBorder(ChunkOutlineMesh debugBorder, Set<Vector3i> chunkPositions, int polygonMode) {
         chunkOutlineShader.bind();
         chunkOutlineShader.engineData.set();
 
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
         GL11.glEnable(GL11.GL_CULL_FACE);
 
-        debugBorder.updatePostions(chunkMeshes.stream().map(ChunkMeshUnion::worldPosition).collect(Collectors.toSet()));
+        debugBorder.updatePostions(chunkPositions);
         debugBorder.render();
 
         GL11.glDisable(GL11.GL_CULL_FACE);

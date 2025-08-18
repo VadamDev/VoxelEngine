@@ -11,12 +11,9 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static net.vadamdev.voxel.world.chunk.Chunk.*;
@@ -155,6 +152,10 @@ public abstract class AbstractWorld implements Disposable {
         }
 
         return result;
+    }
+
+    public Set<Vector3i> allChunkPositions() {
+        return chunks.keySet();
     }
 
     /*
