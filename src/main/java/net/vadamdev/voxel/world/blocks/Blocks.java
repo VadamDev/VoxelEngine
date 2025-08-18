@@ -2,6 +2,7 @@ package net.vadamdev.voxel.world.blocks;
 
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import net.vadamdev.voxel.world.blocks.impl.EdgeBlock;
+import net.vadamdev.voxel.world.blocks.impl.BillboardBlock;
 import net.vadamdev.voxel.world.blocks.impl.UnknownBlock;
 import net.vadamdev.voxel.world.blocks.impl.WaterBlock;
 import org.jetbrains.annotations.NotNull;
@@ -26,7 +27,7 @@ public final class Blocks {
     public static final Block STONE     = registerBlock(new Block("stone"));
     public static final Block DIRT      = registerBlock(new Block("dirt"));
     public static final Block GRASS     = registerBlock(new Block("grass"));
-    public static final Block BILLBOARD = registerBlock(new Block("billboard", true));
+    public static final Block BILLBOARD = registerBlock(new BillboardBlock());
     public static final Block BEDROCK   = registerBlock(new Block("bedrock"));
     public static final Block GLASS     = registerBlock(new Block("glass", true));
     public static final Block WATER     = registerBlock(new WaterBlock());

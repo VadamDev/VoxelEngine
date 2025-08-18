@@ -6,10 +6,13 @@ import net.vadamdev.voxel.world.blocks.Block;
 import net.vadamdev.voxel.world.blocks.Blocks;
 import net.vadamdev.voxel.world.blocks.impl.EdgeBlock;
 import net.vadamdev.voxel.world.chunk.Chunk;
+import net.vadamdev.voxel.world.raycast.Raycast;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
+import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +75,10 @@ public abstract class AbstractWorld implements Disposable {
         return highestBlock;
     }
 
+    public Raycast newRay(float stepSize, double maxRange) {
+        return new Raycast(this, stepSize, maxRange);
+    }
+
     /*
        Get & Set blocks
      */
@@ -125,6 +132,31 @@ public abstract class AbstractWorld implements Disposable {
         return getChunk(toChunkPos(x, y, z));
     }
 
+    public List<Chunk> getNearbyChunks(double x, double y, double z, boolean addSelf) {
+        final Vector3i chunkPos = toChunkPos(x, y, z);
+        final List<Chunk> result = new ArrayList<>();
+
+        if(addSelf) {
+            final Chunk chunk = getChunk(chunkPos);
+            if(chunk != null)
+                result.add(chunk);
+        }
+
+        for(Direction dir : Direction.readValues()) {
+            Vector3i newChunkPos = toChunkPos(x + dir.modX(), y + dir.modY(), z + dir.modZ());
+            if(newChunkPos.equals(chunkPos))
+                continue;
+
+            final Chunk chunk = getChunk(newChunkPos);
+            if(chunk == null)
+                continue;
+
+            result.add(chunk);
+        }
+
+        return result;
+    }
+
     /*
        Remove Chunks
      */
@@ -138,7 +170,7 @@ public abstract class AbstractWorld implements Disposable {
         removeChunk(getChunk(chunkPos));
     }
 
-    public Vector3i toChunkPos(double x, double y, double z) {
+    public static Vector3i toChunkPos(double x, double y, double z) {
         return new Vector3i(
                 MathHelper.floorDiv(x, CHUNK_WIDTH),
                 MathHelper.floorDiv(y, CHUNK_HEIGHT),

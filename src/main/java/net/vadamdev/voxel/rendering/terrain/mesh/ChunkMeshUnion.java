@@ -4,6 +4,7 @@ import net.vadamdev.voxel.VoxelGame;
 import net.vadamdev.voxel.engine.graphics.rendering.Renderable;
 import net.vadamdev.voxel.engine.utils.Disposable;
 import net.vadamdev.voxel.engine.utils.Pointer;
+import net.vadamdev.voxel.rendering.models.blocks.VoxelFactory;
 import net.vadamdev.voxel.rendering.terrain.ChunkMeshFactory;
 import net.vadamdev.voxel.world.chunk.Chunk;
 import org.jetbrains.annotations.Nullable;

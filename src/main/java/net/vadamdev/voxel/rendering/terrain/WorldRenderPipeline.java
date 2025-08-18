@@ -1,6 +1,8 @@
 package net.vadamdev.voxel.rendering.terrain;
 
 import net.vadamdev.voxel.engine.graphics.rendering.Renderable;
+import net.vadamdev.voxel.rendering.terrain.debug.ChunkOutlineMesh;
+import net.vadamdev.voxel.rendering.terrain.debug.ChunkOutlineShader;
 import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshUnion;
 import net.vadamdev.voxel.rendering.terrain.shaders.SolidTerrainShader;
 import net.vadamdev.voxel.rendering.terrain.shaders.WaterTerrainShader;
@@ -8,6 +10,7 @@ import net.vadamdev.voxel.rendering.terrain.texture.TerrainTextureAtlas;
 import org.lwjgl.opengl.GL11;
 
 import java.util.Collection;
+import java.util.stream.Collectors;
 
 /**
  * @author VadamDev
@@ -20,13 +23,15 @@ public class WorldRenderPipeline {
 
     private final SolidTerrainShader solidShader;
     private final WaterTerrainShader waterShader;
+    private final ChunkOutlineShader chunkOutlineShader;
 
-    public WorldRenderPipeline(WorldRenderer worldRenderer, TerrainTextureAtlas textureAtlas, SolidTerrainShader solidShader, WaterTerrainShader waterShader) {
+    public WorldRenderPipeline(WorldRenderer worldRenderer, TerrainTextureAtlas textureAtlas, SolidTerrainShader solidShader, WaterTerrainShader waterShader, ChunkOutlineShader chunkOutlineShader) {
         this.worldRenderer = worldRenderer;
         this.textureAtlas = textureAtlas;
 
         this.solidShader = solidShader;
         this.waterShader = waterShader;
+        this.chunkOutlineShader = chunkOutlineShader;
     }
 
     public void begin() {
@@ -42,20 +47,20 @@ public class WorldRenderPipeline {
 
         solidShader.textureId.set1i(0);
 
+        if(faceCulling)
+            GL11.glEnable(GL11.GL_CULL_FACE);
+
         for(ChunkMeshUnion union : chunkMeshes) {
             final Renderable solidMesh = union.solidMesh();
             if(solidMesh == null)
                 continue;
 
-            if(faceCulling)
-                GL11.glEnable(GL11.GL_CULL_FACE);
-
             solidShader.chunkPos.set3i(union.worldPosition());
             solidMesh.render();
-
-            if(faceCulling)
-                GL11.glDisable(GL11.GL_CULL_FACE);
         }
+
+        if(faceCulling)
+            GL11.glDisable(GL11.GL_CULL_FACE);
 
         solidShader.unbind();
 
@@ -78,26 +83,20 @@ public class WorldRenderPipeline {
         waterShader.unbind();
     }
 
-    public void renderDebugBorder(ChunkDebugBorder debugBorder, Collection<ChunkMeshUnion> chunkMeshes, int polygonMode) {
-        solidShader.bind();
-        solidShader.engineData.set();
-        solidShader.textureId.set1i(0);
+    public void renderDebugBorder(ChunkOutlineMesh debugBorder, Collection<ChunkMeshUnion> chunkMeshes, int polygonMode) {
+        chunkOutlineShader.bind();
+        chunkOutlineShader.engineData.set();
 
-        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
         GL11.glEnable(GL11.GL_CULL_FACE);
 
-        for(ChunkMeshUnion union : chunkMeshes) {
-            if(union.isEmpty())
-                continue;
-
-            solidShader.chunkPos.set3i(union.worldPosition());
-            debugBorder.render();
-        }
+        debugBorder.updatePostions(chunkMeshes.stream().map(ChunkMeshUnion::worldPosition).collect(Collectors.toSet()));
+        debugBorder.render();
 
         GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, polygonMode);
 
-        solidShader.unbind();
+        chunkOutlineShader.unbind();
     }
 
     public void end() {

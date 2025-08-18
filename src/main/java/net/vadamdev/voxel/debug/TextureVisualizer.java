@@ -3,6 +3,7 @@ package net.vadamdev.voxel.debug;
 import imgui.ImGui;
 import net.vadamdev.voxel.engine.graphics.texture.Texture;
 import net.vadamdev.voxel.engine.window.imgui.DearImGui;
+import net.vadamdev.voxel.engine.window.imgui.ImGuiCapableWindow;
 
 import static imgui.ImGui.*;
 
@@ -54,10 +55,10 @@ public class TextureVisualizer implements DearImGui {
     }
 
     @Override
-    public void render() {
+    public void render(ImGuiCapableWindow window) {
         if(texture == null)
             return;
 
-        DearImGui.super.render();
+        DearImGui.super.render(window);
     }
 }

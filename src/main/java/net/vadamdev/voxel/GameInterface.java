@@ -10,6 +10,7 @@ import net.vadamdev.voxel.engine.graphics.rendering.Camera;
 import net.vadamdev.voxel.engine.loop.FixedStepLoop;
 import net.vadamdev.voxel.engine.math.MathHelper;
 import net.vadamdev.voxel.engine.window.imgui.DearImGui;
+import net.vadamdev.voxel.engine.window.imgui.ImGuiCapableWindow;
 import net.vadamdev.voxel.rendering.terrain.WorldRenderer;
 import net.vadamdev.voxel.rendering.terrain.ChunkMeshFactory;
 import net.vadamdev.voxel.rendering.terrain.shaders.WaterTerrainShader;
@@ -230,13 +231,13 @@ public class GameInterface implements DearImGui {
     }
 
     @Override
-    public void render() {
+    public void render(ImGuiCapableWindow window) {
         if(viewTextureAtlas.get())
-            atlasVisualizer.render();
+            atlasVisualizer.render(window);
 
         if(viewTerrainNoise.get())
-            noiseVisualizer.render();
+            noiseVisualizer.render(window);
 
-        DearImGui.super.render();
+        DearImGui.super.render(window);
     }
 }

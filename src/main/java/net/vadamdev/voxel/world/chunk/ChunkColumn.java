@@ -45,7 +45,7 @@ public class ChunkColumn {
                 final float noisy = (noise.GetNoise(worldX + x, worldZ + z) + 1) / 2;
 
                 int height = Math.clamp((int) Math.floor(noisy * amplitude), 0, this.height * CHUNK_HEIGHT);
-                //height += caveHeight;
+                height += caveHeight;
 
                 if(height > waterHeight)
                     height -= height % 3;

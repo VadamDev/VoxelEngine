@@ -48,7 +48,7 @@ public class JsonBlockElement {
 
         final float angle = Math.toRadians(rotationJson.getFloat("angle"));
         final String axis = rotationJson.getString("axis");
-        final Vector3f origin = rotationJson.getJsonArray("origin").acquire(arr -> new Vector3f(new Vector3i(arr.toIntArray())).div(VoxelFactory.VOXEL_SIZE));
+        final Vector3f origin = rotationJson.getJsonArray("origin").acquire(arr -> new Vector3f(new Vector3i(arr.toIntArray())).div(VoxelFactory.VOXEL_PRECISION));
 
         if(angle == 0 || axis == null)
             return;
@@ -106,7 +106,7 @@ public class JsonBlockElement {
             final VoxelTextureRef textureRef = textureRefs[i];
 
             if(textureRef != null)
-                uvs[i] = textureRef.toFaceUv(VoxelFactory.VOXEL_SIZE);
+                uvs[i] = textureRef.toFaceUv(VoxelFactory.VOXEL_PRECISION);
             else
                 uvs[i] = null;
         }

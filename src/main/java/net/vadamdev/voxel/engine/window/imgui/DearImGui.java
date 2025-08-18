@@ -1,6 +1,7 @@
 package net.vadamdev.voxel.engine.window.imgui;
 
 import imgui.ImGui;
+import imgui.ImVec2;
 
 /**
  * @author VadamDev
@@ -11,7 +12,7 @@ public interface DearImGui {
     void draw();
     void end();
 
-    default void render() {
+    default void render(ImGuiCapableWindow window) {
         ImGui.setNextWindowViewport(ImGui.getMainViewport().getID());
 
         begin();

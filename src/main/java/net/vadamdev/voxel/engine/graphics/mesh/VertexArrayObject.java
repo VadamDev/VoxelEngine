@@ -1,10 +1,8 @@
 package net.vadamdev.voxel.engine.graphics.mesh;
 
-import it.unimi.dsi.fastutil.ints.AbstractInt2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import net.vadamdev.voxel.engine.graphics.rendering.Renderable;
 import net.vadamdev.voxel.engine.utils.Disposable;
-import org.lwjgl.opengl.GL40;
 
 import java.nio.*;
 
@@ -15,10 +13,12 @@ import static org.lwjgl.opengl.GL30.*;
  * @since 29/06/2025
  */
 public class VertexArrayObject implements Renderable, Disposable {
-    protected int vao;
-    public int verticesCount;
+    private Type renderType;
 
-    protected final AbstractInt2IntMap buffers;
+    protected int vao, ebo;
+    protected int verticesCount;
+
+    protected final Int2IntOpenHashMap buffers;
     protected int vertexAttribIndex;
 
     protected boolean ready, destroyed;
@@ -38,18 +38,28 @@ public class VertexArrayObject implements Renderable, Disposable {
        Create
      */
 
-    public VertexArrayObject create(int verticesCount) {
+    public VertexArrayObject create(int verticesCount, Type renderType) {
+        this.renderType = renderType;
+
         vao = glGenVertexArrays();
         this.verticesCount = verticesCount;
 
         return this;
     }
 
-    public VertexArrayObject createAndBind(int verticesCount) {
-        create(verticesCount);
+    public VertexArrayObject create(int verticesCount) {
+        return create(verticesCount, Type.ARRAYS);
+    }
+
+    public VertexArrayObject createAndBind(int verticesCount, Type renderType) {
+        create(verticesCount, renderType);
         bind();
 
         return this;
+    }
+
+    public VertexArrayObject createAndBind(int verticesCount) {
+        return createAndBind(verticesCount, Type.ARRAYS);
     }
 
     /*
@@ -68,7 +78,25 @@ public class VertexArrayObject implements Renderable, Disposable {
        Buffers
      */
 
+    public <T extends Buffer> void genElementBuffer(T buffer) {
+        if(destroyed)
+            throw new IllegalStateException("VAO was destroyed");
+
+        if(ready)
+            throw new IllegalStateException("VAO was set as ready, you can only modify existing buffers");
+
+        ebo = glGenBuffers();
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glGenericBufferData(GL_ELEMENT_ARRAY_BUFFER, buffer, GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
+
     public <T extends Buffer> int genBuffer(T buffer, int size) {
+        return genBuffer(buffer, size, GL_STATIC_DRAW);
+    }
+
+    public <T extends Buffer> int genBuffer(T buffer, int size, int usage) {
         if(destroyed)
             throw new IllegalStateException("VAO was destroyed");
 
@@ -78,9 +106,9 @@ public class VertexArrayObject implements Renderable, Disposable {
         final int bufferId = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, bufferId);
 
-        glGenericBufferData(GL_ARRAY_BUFFER, buffer, GL_STATIC_DRAW);
+        glGenericBufferData(GL_ARRAY_BUFFER, buffer, usage);
         glEnableVertexAttribArray(vertexAttribIndex);
-        glVertexAttribPointer(vertexAttribIndex, size, glGenericBufferType(buffer), false, 0, 0);
+        glVertexAttribPointer(vertexAttribIndex, size, glGenericBufferDataType(false, buffer), false, 0, 0);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -91,6 +119,10 @@ public class VertexArrayObject implements Renderable, Disposable {
     }
 
     public <T extends Buffer> void updateBuffer(int bufferId, T buffer) {
+        updateBuffer(bufferId, buffer, GL_STATIC_DRAW);
+    }
+
+    public <T extends Buffer> void updateBuffer(int bufferId, T buffer, int usage) {
         if(destroyed)
             throw new IllegalStateException("VAO was destroyed");
 
@@ -98,7 +130,7 @@ public class VertexArrayObject implements Renderable, Disposable {
             throw new NullPointerException("Buffer id " + bufferId + " not found");
 
         glBindBuffer(GL_ARRAY_BUFFER, bufferId);
-        glGenericBufferData(GL_ARRAY_BUFFER, buffer, GL_STATIC_DRAW);
+        glGenericBufferData(GL_ARRAY_BUFFER, buffer, usage);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
@@ -138,10 +170,24 @@ public class VertexArrayObject implements Renderable, Disposable {
         bind();
         enableVertexAttribArrays();
 
-        glDrawArrays(GL_TRIANGLES, 0, verticesCount);
+        switch(renderType) {
+            case ARRAYS -> drawArrays();
+            case STRIP -> throw new UnsupportedOperationException("GL_TRIANGLE_STRIP is not yet supported"); //TODO: implement
+            case ELEMENTS -> drawElements();
+        }
 
         disableVertexAttribArrays();
         unbind();
+    }
+
+    protected void drawArrays() {
+        glDrawArrays(GL_TRIANGLES, 0, verticesCount);
+    }
+
+    protected void drawElements() {
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glDrawElements(GL_TRIANGLES, verticesCount, GL_UNSIGNED_INT, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
     @Override
@@ -153,7 +199,10 @@ public class VertexArrayObject implements Renderable, Disposable {
         disableVertexAttribArrays();
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
-        buffers.forEach((k, v) -> glDeleteBuffers(k));
+        buffers.forEach((bufferId, v) -> glDeleteBuffers(bufferId));
+
+        if(ebo != 0)
+            glDeleteBuffers(ebo);
 
         glBindVertexArray(0);
         glDeleteVertexArrays(vao);
@@ -163,6 +212,10 @@ public class VertexArrayObject implements Renderable, Disposable {
 
         ready = false;
         destroyed = true;
+    }
+
+    public Type getRenderType() {
+        return renderType;
     }
 
     public boolean isReady() {
@@ -192,14 +245,22 @@ public class VertexArrayObject implements Renderable, Disposable {
         }
     }
 
-    public static <T extends Buffer> int glGenericBufferType(T buffer) {
+    public static <T extends Buffer> int glGenericBufferDataType(boolean unsigned, T buffer) {
         return switch(buffer) {
-            case IntBuffer ignored -> GL_FLOAT;
-            case ByteBuffer ignored -> GL_BYTE;
+            case IntBuffer ignored -> unsigned ? GL_UNSIGNED_INT : GL_INT;
+            case ByteBuffer ignored -> unsigned ? GL_UNSIGNED_BYTE : GL_BYTE;
             case FloatBuffer ignored -> GL_FLOAT;
-            case ShortBuffer ignored -> GL_SHORT;
+            case ShortBuffer ignored -> unsigned ? GL_UNSIGNED_SHORT : GL_SHORT;
             case DoubleBuffer ignored -> GL_DOUBLE;
             default -> throw new IllegalArgumentException("Unrecognized buffer type: " + buffer.getClass().getName());
         };
+    }
+
+    /*
+       Render Type
+     */
+
+    public enum Type {
+        ARRAYS, STRIP, ELEMENTS
     }
 }

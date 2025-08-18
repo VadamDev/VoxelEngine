@@ -64,8 +64,6 @@ public class VoxelGame extends AbstractGame<ImGuiCapableWindow> {
 
         //Interfaces
         window.registerImGui(new GameInterface(gameLoop, camera, worldRenderer));
-
-        worldRenderer.postInit();
     }
 
     @Override

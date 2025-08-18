@@ -1,9 +1,9 @@
 #version 330
 
 //Vertices Data
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec2 inTexCoords;
-layout(location = 2) in vec3 inNormal;
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aTexCoords;
+layout(location = 2) in vec3 aNormal;
 
 //Uniforms
 uniform struct EngineData {
@@ -52,12 +52,12 @@ void applyWaveEffect(inout vec3 position) {
 }
 
 void main() {
-    vec3 worldPos = inPosition + chunkPos;
+    vec3 worldPos = aPosition + chunkPos;
     applyWaveEffect(worldPos);
 
     pWorldPos = worldPos;
-    pTexCoords = inTexCoords;
-    pNormal = inNormal;
+    pTexCoords = aTexCoords;
+    pNormal = aNormal;
 
     gl_Position = engineData.projectionViewMatrix * vec4(worldPos, 1);
 }

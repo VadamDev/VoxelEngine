@@ -5,6 +5,8 @@ import net.vadamdev.voxel.engine.graphics.rendering.Renderable;
 import net.vadamdev.voxel.engine.graphics.shaders.exceptions.ShaderException;
 import net.vadamdev.voxel.engine.graphics.texture.Texture;
 import net.vadamdev.voxel.engine.utils.Disposable;
+import net.vadamdev.voxel.rendering.terrain.debug.ChunkOutlineMesh;
+import net.vadamdev.voxel.rendering.terrain.debug.ChunkOutlineShader;
 import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshUnion;
 import net.vadamdev.voxel.rendering.terrain.shaders.SolidTerrainShader;
 import net.vadamdev.voxel.rendering.terrain.shaders.WaterTerrainShader;
@@ -31,10 +33,11 @@ public class WorldRenderer implements Renderable, Disposable {
     private final MatrixDrawer matrixDrawer;
 
     private final TerrainTextureAtlas textureAtlas;
-    private ChunkDebugBorder debugBorder;
+    private final ChunkOutlineMesh debugBorder;
 
     private final SolidTerrainShader solidShader;
     private final WaterTerrainShader waterShader;
+    private final ChunkOutlineShader chunkOutlineShader;
 
     private final WorldRenderPipeline pipeline;
 
@@ -53,20 +56,20 @@ public class WorldRenderer implements Renderable, Disposable {
         this.textureAtlas = new TerrainTextureAtlas();
         this.textureAtlas.create();
 
+        this.debugBorder = new ChunkOutlineMesh();
+
         this.solidShader = new SolidTerrainShader();
         this.solidShader.create();
 
         this.waterShader = new WaterTerrainShader();
         this.waterShader.create();
 
-        this.pipeline = new WorldRenderPipeline(this, textureAtlas, solidShader, waterShader);
+        this.chunkOutlineShader = new ChunkOutlineShader();
+        this.chunkOutlineShader.create();
+
+        this.pipeline = new WorldRenderPipeline(this, textureAtlas, solidShader, waterShader, chunkOutlineShader);
 
         GL11.glCullFace(GL11.GL_BACK);
-    }
-
-    public void postInit() {
-        this.debugBorder = new ChunkDebugBorder();
-        this.debugBorder.create();
     }
 
     @Override
@@ -80,7 +83,7 @@ public class WorldRenderer implements Renderable, Disposable {
 
         //Chunk debug border
         if(renderChunkBorders)
-            pipeline.renderDebugBorder(debugBorder, chunkMeshes, polygonMode);
+            pipeline.renderDebugBorder(debugBorder, this.chunkMeshes.values(), polygonMode);
 
         pipeline.end();
     }
@@ -103,11 +106,12 @@ public class WorldRenderer implements Renderable, Disposable {
         debugBorder.dispose();
         solidShader.dispose();
         waterShader.dispose();
+        chunkOutlineShader.dispose();
 
         Optional.ofNullable(textureAtlas.getAtlas()).ifPresent(Texture::dispose);
     }
 
-    public synchronized void addChunk(Chunk chunk) {
+    public void addChunk(Chunk chunk) {
         final Vector3i chunkPos = chunk.position();
         if(chunkMeshes.containsKey(chunkPos) || meshFactory.isMeshing(chunkPos))
             return;
@@ -117,7 +121,7 @@ public class WorldRenderer implements Renderable, Disposable {
         union.constructMeshAsync(chunk);
     }
 
-    public synchronized void updateChunk(Chunk chunk) {
+    public void updateChunk(Chunk chunk) {
         final ChunkMeshUnion union = chunkMeshes.get(chunk.position());
         if(union == null)
             return;
@@ -125,7 +129,15 @@ public class WorldRenderer implements Renderable, Disposable {
         union.constructMeshAsync(chunk);
     }
 
-    public synchronized void removeChunk(Vector3i chunkPos) {
+    public void updateChunkSync(Chunk chunk) {
+        final ChunkMeshUnion union = chunkMeshes.get(chunk.position());
+        if(union == null)
+            return;
+
+        union.constructMeshSync(chunk);
+    }
+
+    public void removeChunk(Vector3i chunkPos) {
         final ChunkMeshUnion union = chunkMeshes.get(chunkPos);
         if(union == null)
             return;

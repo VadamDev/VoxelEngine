@@ -1,10 +1,10 @@
 #version 330
 
 //Vertices Data
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec2 inTexCoords;
-layout(location = 2) in vec3 inNormal;
-layout(location = 3) in int inAO;
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aTexCoords;
+layout(location = 2) in vec3 aNormal;
+layout(location = 3) in float aAO;
 
 //Uniforms
 uniform struct EngineData {
@@ -21,8 +21,8 @@ out float pAmbiantOcclusion;
 //Shader
 
 void main() {
-    pTexCoords = inTexCoords;
-    pAmbiantOcclusion = inAO; //normalized in frag shader
+    pTexCoords = aTexCoords;
+    pAmbiantOcclusion = aAO; //normalized in frag shader
 
-    gl_Position = engineData.projectionViewMatrix * vec4(inPosition + chunkPos, 1);
+    gl_Position = engineData.projectionViewMatrix * vec4(aPosition + chunkPos, 1);
 }

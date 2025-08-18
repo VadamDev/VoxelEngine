@@ -5,6 +5,8 @@ import net.vadamdev.voxel.rendering.models.blocks.BlockModel;
 import net.vadamdev.voxel.world.AbstractWorld;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author VadamDev
@@ -14,6 +16,8 @@ public class Block {
     private final short blockId;
     private final String name;
     private final boolean transparent, water;
+
+    protected boolean fragile;
 
     public Block(short blockId, String name, boolean transparent, boolean water) {
         this.blockId = blockId;
@@ -67,5 +71,9 @@ public class Block {
 
     public boolean isWater() {
         return water;
+    }
+
+    public boolean isFragile() {
+        return fragile;
     }
 }

@@ -1,10 +1,15 @@
 package net.vadamdev.voxel.controller;
 
+import net.vadamdev.voxel.VoxelGame;
 import net.vadamdev.voxel.engine.graphics.rendering.Camera;
 import net.vadamdev.voxel.engine.inputs.Keyboard;
 import net.vadamdev.voxel.engine.inputs.Mouse;
+import net.vadamdev.voxel.world.AbstractWorld;
+import net.vadamdev.voxel.world.blocks.Block;
+import net.vadamdev.voxel.world.raycast.Raycast;
 import org.joml.Math;
 import org.joml.Vector2f;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /**
@@ -31,13 +36,15 @@ public class PlayerController {
     }
 
     public void processInputs(float deltaTime) {
-        final boolean processedMouse = processMouse(), processedKeyboard = processKeyboard(deltaTime);
+        final boolean processedMouse = processMouseMovements(), processedKeyboard = processKeyboardMovements(deltaTime);
 
         if(processedMouse || processedKeyboard)
             camera.updateViewMatrix();
+
+        processMouseButtons();
     }
 
-    private boolean processMouse() {
+    private boolean processMouseMovements() {
         boolean hasProcessed = false;
 
         final double deltaX = Mouse.getDX();
@@ -72,7 +79,7 @@ public class PlayerController {
         return false;
     }
 
-    private boolean processKeyboard(float deltaTime) {
+    private boolean processKeyboardMovements(float deltaTime) {
         float xOffset = 0,  yOffset = 0, zOffset = 0;
 
         if(Keyboard.isKeyDown(Keyboard.KEY_W))
@@ -122,5 +129,39 @@ public class PlayerController {
         }
 
         position.y += yOffset;
+    }
+
+    private long lastPlaceOrBreak = System.currentTimeMillis();
+    private void processMouseButtons() {
+        final AbstractWorld world = VoxelGame.get().getWorld();
+        final Raycast.Result result = world.newRay(0.01f, 5).cast(camera);
+        if(result.isEmpty() || System.currentTimeMillis() - lastPlaceOrBreak < 100)
+            return;
+
+        final double hitX = result.pos().x();
+        final double hitY = result.pos().y();
+        final double hitZ = result.pos().z();
+
+        boolean worked = false;
+
+        if(Mouse.isButtonDown(Mouse.BUTTON_1)) {
+            world.setBlock((short) 0, hitX, hitY, hitZ);
+            world.getNearbyChunks(hitX, hitY, hitZ, true).forEach(VoxelGame.get().getWorldRenderer()::updateChunkSync);
+
+            worked = true;
+        }else if(Mouse.isButtonDown(Mouse.BUTTON_2)) {
+            final Vector3d placePos = result.previousPos();
+            final Block blockAtPlacePos = world.getBlock(placePos.x(), placePos.y(), placePos.z());
+
+            if(blockAtPlacePos == null || blockAtPlacePos.isFragile()) {
+                world.setBlock((short) 1, placePos.x(), placePos.y(), placePos.z());
+                world.getNearbyChunks(hitX, hitY, hitZ, true).forEach(VoxelGame.get().getWorldRenderer()::updateChunkSync);
+
+                worked = true;
+            }
+        }
+
+        if(worked)
+            lastPlaceOrBreak = System.currentTimeMillis();
     }
 }

@@ -15,7 +15,7 @@ import org.joml.Vector3i;
  * @since 04/06/2025
  */
 public class VoxelFactory {
-    public static final float VOXEL_SIZE = 16; //Defines voxel size precision
+    public static final float VOXEL_PRECISION = 16; //Defines voxel size precision 0 -> 16 inside the block
 
     private static final int[][] AO_INDEXES = new int[][] {
             { 2, 1, 0, 2, 3, 1 }, // +X
@@ -42,13 +42,13 @@ public class VoxelFactory {
     }
 
     private void bakePlanes(Vector3i from, Vector3i to) {
-        final float startX = from.x() / VOXEL_SIZE;
-        final float startY = from.y() / VOXEL_SIZE;
-        final float startZ = from.z() / VOXEL_SIZE;
+        final float startX = from.x() / VOXEL_PRECISION;
+        final float startY = from.y() / VOXEL_PRECISION;
+        final float startZ = from.z() / VOXEL_PRECISION;
 
-        final float endX = to.x() / VOXEL_SIZE;
-        final float endY = to.y() / VOXEL_SIZE;
-        final float endZ = to.z() / VOXEL_SIZE;
+        final float endX = to.x() / VOXEL_PRECISION;
+        final float endY = to.y() / VOXEL_PRECISION;
+        final float endZ = to.z() / VOXEL_PRECISION;
 
         if(uvs[0] != null) {
             posXPlane = new float[] {
@@ -215,7 +215,7 @@ public class VoxelFactory {
             addFace(negZPlane, negZUv, AO_INDEXES[5], dX, dY, dZ, meshData, calculateAO(Direction.WEST, aoGroup));
     }
 
-    private void addFace(float[] plane, float[] uvs, int[] aoIndex, int dX, int dY, int dZ, ChunkMeshBase.Data meshData, byte[] ao) {
+    private void addFace(float[] plane, float[] uvs, int[] aoIndex, float dX, float dY, float dZ, ChunkMeshBase.Data meshData, byte[] ao) {
         for(int i = 0; i < plane.length; i += 3) {
             meshData.verticesBuffer.put(plane[i] + dX);
             meshData.verticesBuffer.put(plane[i + 1] + dY);

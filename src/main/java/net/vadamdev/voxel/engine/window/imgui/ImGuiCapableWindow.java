@@ -3,6 +3,7 @@ package net.vadamdev.voxel.engine.window.imgui;
 import imgui.ImGui;
 import imgui.ImGuiIO;
 import imgui.flag.ImGuiConfigFlags;
+import imgui.flag.ImGuiHoveredFlags;
 import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
 import net.vadamdev.voxel.engine.window.Window;
@@ -15,6 +16,8 @@ import java.util.List;
  * @since 29/05/2025
  */
 public class ImGuiCapableWindow extends Window {
+    private static final int MOUSE_DISABLE_MASK = ImGuiConfigFlags.NoMouse | ImGuiConfigFlags.NoMouseCursorChange;
+
     private final ImGuiImplGlfw imguiGLFW;
     private final ImGuiImplGl3 imguiGL3;
 
@@ -47,20 +50,29 @@ public class ImGuiCapableWindow extends Window {
     }
 
     private void renderImGui() {
-        if(!windows.isEmpty()) {
-            imguiGLFW.newFrame();
-            imguiGL3.newFrame();
-            ImGui.newFrame();
+        if(windows.isEmpty())
+            return;
 
-            windows.forEach(DearImGui::render);
+        imguiGLFW.newFrame();
+        imguiGL3.newFrame();
+        ImGui.newFrame();
 
-            ImGui.render();
-            imguiGL3.renderDrawData(ImGui.getDrawData());
+        final ImGuiIO io = ImGui.getIO();
+        final boolean isMouseDisabled = io.hasConfigFlags(MOUSE_DISABLE_MASK);
 
-            if(ImGui.getIO().hasConfigFlags(ImGuiConfigFlags.ViewportsEnable)) {
-                ImGui.updatePlatformWindows();
-                ImGui.renderPlatformWindowsDefault();
-            }
+        if(isGrabbed() && !isMouseDisabled)
+            io.addConfigFlags(MOUSE_DISABLE_MASK);
+        else if(!isGrabbed() && isMouseDisabled)
+            io.removeConfigFlags(MOUSE_DISABLE_MASK);
+
+        windows.forEach(imgui -> imgui.render(this));
+
+        ImGui.render();
+        imguiGL3.renderDrawData(ImGui.getDrawData());
+
+        if(io.hasConfigFlags(ImGuiConfigFlags.ViewportsEnable)) {
+            ImGui.updatePlatformWindows();
+            ImGui.renderPlatformWindowsDefault();
         }
     }
 

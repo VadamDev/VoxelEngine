@@ -70,7 +70,7 @@ public class Camera {
     }
 
     public float pitch() {
-        return Math.toRadians(rotation.x());
+        return Math.toRadians(-rotation.x());
     }
 
     public Vector3f getDirection() {
