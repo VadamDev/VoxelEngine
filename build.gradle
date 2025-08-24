@@ -16,7 +16,6 @@ compileJava {
 
 application {
     mainClass = 'net.vadamdev.voxel.VoxelGame'
-    applicationDefaultJvmArgs = ['-Djoml.fastmath']
 }
 
 group = 'net.vadamdev.voxel'
@@ -28,25 +27,21 @@ repositories {
 
 dependencies {
     //Logging
-    implementation "org.slf4j:slf4j-api:2.0.17"
-    implementation "uk.org.lidalia:sysout-over-slf4j:1.0.2"
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+    implementation "uk.org.lidalia:sysout-over-slf4j:${sysoutOverVersion}"
     runtimeOnly "ch.qos.logback:logback-classic:${logbackVersion}"
 
     //LWJGL
     implementation platform("org.lwjgl:lwjgl-bom:${lwjglVersion}")
     implementation "org.lwjgl:lwjgl"
-    implementation "org.lwjgl:lwjgl-assimp"
     implementation "org.lwjgl:lwjgl-glfw"
     implementation "org.lwjgl:lwjgl-openal"
     implementation "org.lwjgl:lwjgl-opengl"
-    implementation "org.lwjgl:lwjgl-stb"
 
-    runtimeOnly "org.lwjgl:lwjgl::${lwjglNatives}"
-    runtimeOnly "org.lwjgl:lwjgl-assimp::${lwjglNatives}"
-    runtimeOnly "org.lwjgl:lwjgl-glfw::${lwjglNatives}"
-    runtimeOnly "org.lwjgl:lwjgl-openal::${lwjglNatives}"
-    runtimeOnly "org.lwjgl:lwjgl-opengl::${lwjglNatives}"
-    runtimeOnly "org.lwjgl:lwjgl-stb::${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl:${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl-glfw:${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl-openal:${lwjglNatives}"
+    runtimeOnly "org.lwjgl:lwjgl-opengl:${lwjglNatives}"
 
     //Additional Dependencies
     implementation "org.joml:joml:${jomlVersion}"
