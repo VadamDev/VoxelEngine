@@ -1,48 +1,38 @@
 package net.vadamdev.voxel.rendering.terrain;
 
 import net.vadamdev.voxel.engine.graphics.rendering.Renderable;
-import net.vadamdev.voxel.rendering.terrain.debug.ChunkOutlineMesh;
-import net.vadamdev.voxel.rendering.terrain.debug.ChunkOutlineShader;
+import net.vadamdev.voxel.rendering.mesh.InstancedMesh;
+import net.vadamdev.voxel.rendering.terrain.debug.ChunkOutlineRenderer;
+import net.vadamdev.voxel.rendering.terrain.highlight.BlockHighlightRenderer;
 import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshUnion;
+import net.vadamdev.voxel.rendering.terrain.shaders.ColoredWireframeShader;
 import net.vadamdev.voxel.rendering.terrain.shaders.SolidTerrainShader;
 import net.vadamdev.voxel.rendering.terrain.shaders.WaterTerrainShader;
-import net.vadamdev.voxel.rendering.terrain.texture.TerrainTextureAtlas;
 import org.joml.Vector3i;
 import org.lwjgl.opengl.GL11;
 
+import java.awt.*;
 import java.util.Collection;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * @author VadamDev
  * @since 04/07/2025
  */
-public class WorldRenderPipeline {
+public class WorldRendererHelper {
     private final WorldRenderer worldRenderer;
+    protected int polygonMode;
 
-    private final TerrainTextureAtlas textureAtlas;
-
-    private final SolidTerrainShader solidShader;
-    private final WaterTerrainShader waterShader;
-    private final ChunkOutlineShader chunkOutlineShader;
-
-    public WorldRenderPipeline(WorldRenderer worldRenderer, TerrainTextureAtlas textureAtlas, SolidTerrainShader solidShader, WaterTerrainShader waterShader, ChunkOutlineShader chunkOutlineShader) {
+    public WorldRendererHelper(WorldRenderer worldRenderer) {
         this.worldRenderer = worldRenderer;
-        this.textureAtlas = textureAtlas;
-
-        this.solidShader = solidShader;
-        this.waterShader = waterShader;
-        this.chunkOutlineShader = chunkOutlineShader;
-    }
-
-    public void begin() {
-        textureAtlas.bind();
     }
 
     public void renderChunks(Collection<ChunkMeshUnion> chunkMeshes, boolean faceCulling) {
+        worldRenderer.textureAtlas.bind();
+
         //Solid Mesh
 
+        final SolidTerrainShader solidShader = worldRenderer.getSolidShader();
         solidShader.bind();
         solidShader.engineData.set();
         solidShader.aoIntensity.set1f(worldRenderer.aoIntensity);
@@ -67,6 +57,7 @@ public class WorldRenderPipeline {
         solidShader.unbind();
 
         //Water Mesh
+        final WaterTerrainShader waterShader = worldRenderer.getWaterShader();
         waterShader.bind();
         waterShader.engineData.set();
         waterShader.waveEffect.set();
@@ -83,25 +74,53 @@ public class WorldRenderPipeline {
         }
 
         waterShader.unbind();
+
+        worldRenderer.textureAtlas.unbind();
     }
 
-    public void renderDebugBorder(ChunkOutlineMesh debugBorder, Set<Vector3i> chunkPositions, int polygonMode) {
-        chunkOutlineShader.bind();
-        chunkOutlineShader.engineData.set();
+    public void renderBlockOver(BlockHighlightRenderer blockHighlight, Vector3i blockPos) {
+        final Set<Vector3i> offsets = blockHighlight.highlightedOffsets();
+
+        if(!offsets.isEmpty())
+            offsets.clear();
+
+        if(blockPos != null && (blockPos.x() != 0 && blockPos.y() != 0 && blockPos.z() != 0))
+            offsets.add(blockPos);
+
+        final ColoredWireframeShader shader = blockHighlight.shader();
+        shader.bind();
+        shader.engineData.set();
+        shader.setWireframeColor(Color.WHITE.getRGB());
 
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
         GL11.glEnable(GL11.GL_CULL_FACE);
 
-        debugBorder.updatePostions(chunkPositions);
-        debugBorder.render();
+        final InstancedMesh mesh = blockHighlight.mesh();
+        mesh.updateOffsets(offsets);
+        mesh.render();
 
         GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, polygonMode);
 
-        chunkOutlineShader.unbind();
+        shader.unbind();
     }
 
-    public void end() {
-        textureAtlas.unbind();
+    public void renderDebugBorder(ChunkOutlineRenderer chunkOutline, Set<Vector3i> chunkPositions) {
+        final ColoredWireframeShader shader = chunkOutline.shader();
+        shader.bind();
+        shader.engineData.set();
+        shader.setWireframeColor(0xFFFF00);
+
+        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+        GL11.glEnable(GL11.GL_CULL_FACE);
+
+        final InstancedMesh mesh = chunkOutline.mesh();
+        mesh.updateOffsets(chunkPositions);
+        mesh.render();
+
+        GL11.glDisable(GL11.GL_CULL_FACE);
+        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, polygonMode);
+
+        shader.unbind();
     }
 }

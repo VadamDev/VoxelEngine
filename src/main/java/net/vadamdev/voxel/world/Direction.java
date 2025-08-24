@@ -1,11 +1,7 @@
 package net.vadamdev.voxel.world;
 
-import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-
-import java.text.NumberFormat;
-import java.util.Vector;
 
 /**
  * @author VadamDev

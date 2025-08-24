@@ -18,8 +18,8 @@ import static net.vadamdev.voxel.world.chunk.Chunk.CHUNK_WIDTH;
  * @since 29/06/2025
  */
 public class World extends AbstractWorld {
-    public static int RENDER_DISTANCE = 6;
-    public static final int WORLD_HEIGHT = 8;
+    public static int RENDER_DISTANCE = 1;
+    public static final int WORLD_HEIGHT = 4;
 
     public final FastNoiseLite noise;
 
@@ -47,7 +47,6 @@ public class World extends AbstractWorld {
 
     public void update() {
         generateChunksAroundCamera();
-        updateChunks();
     }
 
     private void generateChunksAroundCamera() {

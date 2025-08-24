@@ -2,7 +2,6 @@ package net.vadamdev.voxel.engine.graphics.rendering;
 
 import net.vadamdev.voxel.engine.graphics.shaders.GLSLStruct;
 import net.vadamdev.voxel.engine.graphics.shaders.IUniformAccess;
-import net.vadamdev.voxel.engine.graphics.shaders.UniformAccess;
 import net.vadamdev.voxel.engine.loop.FixedStepLoop;
 
 import java.util.Map;

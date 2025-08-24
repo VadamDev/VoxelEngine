@@ -3,7 +3,6 @@ package net.vadamdev.voxel.engine.window.imgui;
 import imgui.ImGui;
 import imgui.ImGuiIO;
 import imgui.flag.ImGuiConfigFlags;
-import imgui.flag.ImGuiHoveredFlags;
 import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
 import net.vadamdev.voxel.engine.window.Window;

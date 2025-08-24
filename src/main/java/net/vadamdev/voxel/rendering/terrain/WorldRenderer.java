@@ -1,18 +1,17 @@
 package net.vadamdev.voxel.rendering.terrain;
 
-import net.vadamdev.voxel.VoxelGame;
 import net.vadamdev.voxel.engine.graphics.rendering.MatrixDrawer;
 import net.vadamdev.voxel.engine.graphics.rendering.Renderable;
 import net.vadamdev.voxel.engine.graphics.shaders.exceptions.ShaderException;
-import net.vadamdev.voxel.engine.graphics.texture.Texture;
 import net.vadamdev.voxel.engine.utils.Disposable;
-import net.vadamdev.voxel.rendering.terrain.debug.ChunkOutlineMesh;
-import net.vadamdev.voxel.rendering.terrain.debug.ChunkOutlineShader;
+import net.vadamdev.voxel.rendering.terrain.debug.ChunkOutlineRenderer;
+import net.vadamdev.voxel.rendering.terrain.highlight.BlockHighlightRenderer;
 import net.vadamdev.voxel.rendering.terrain.mesh.ChunkMeshUnion;
 import net.vadamdev.voxel.rendering.terrain.shaders.SolidTerrainShader;
 import net.vadamdev.voxel.rendering.terrain.shaders.WaterTerrainShader;
 import net.vadamdev.voxel.rendering.terrain.texture.TerrainTextureAtlas;
 import net.vadamdev.voxel.world.chunk.Chunk;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.lwjgl.opengl.GL11;
@@ -21,7 +20,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -34,14 +32,19 @@ public class WorldRenderer implements Renderable, Disposable {
     private final ChunkMeshFactory meshFactory;
     private final MatrixDrawer matrixDrawer;
 
-    private final TerrainTextureAtlas textureAtlas;
-    private final ChunkOutlineMesh debugBorder;
+    //Texture
+    protected final TerrainTextureAtlas textureAtlas;
 
+    //Shaders
     private final SolidTerrainShader solidShader;
     private final WaterTerrainShader waterShader;
-    private final ChunkOutlineShader chunkOutlineShader;
 
-    private final WorldRenderPipeline pipeline;
+    //Renderers
+    private final BlockHighlightRenderer blockHighlight;
+    private final ChunkOutlineRenderer chunkOutline;
+
+    //Helper
+    private final WorldRendererHelper helper;
 
     //Public Parameters
     public boolean renderChunkBorders = false;
@@ -50,26 +53,30 @@ public class WorldRenderer implements Renderable, Disposable {
 
     public float aoIntensity = 0.5f;
 
+    @Nullable public Vector3i selectedBlockPos;
+
     public WorldRenderer(ChunkMeshFactory meshFactory, MatrixDrawer matrixDrawer) throws URISyntaxException, IOException, ShaderException {
         this.chunkMeshes = new ConcurrentHashMap<>();
         this.meshFactory = meshFactory;
         this.matrixDrawer = matrixDrawer;
 
+        //Texture
         this.textureAtlas = new TerrainTextureAtlas();
         this.textureAtlas.create();
 
-        this.debugBorder = new ChunkOutlineMesh();
-
+        //Shaders
         this.solidShader = new SolidTerrainShader();
         this.solidShader.create();
 
         this.waterShader = new WaterTerrainShader();
         this.waterShader.create();
 
-        this.chunkOutlineShader = new ChunkOutlineShader();
-        this.chunkOutlineShader.create();
+        //Renderers
+        this.blockHighlight = BlockHighlightRenderer.create();
+        this.chunkOutline = ChunkOutlineRenderer.create();
 
-        this.pipeline = new WorldRenderPipeline(this, textureAtlas, solidShader, waterShader, chunkOutlineShader);
+        //Helper
+        this.helper = new WorldRendererHelper(this);
 
         GL11.glCullFace(GL11.GL_BACK);
     }
@@ -77,17 +84,22 @@ public class WorldRenderer implements Renderable, Disposable {
     @Override
     public void render() {
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, polygonMode);
-        pipeline.begin();
+        helper.polygonMode = polygonMode;
 
         //Chunks
         final Collection<ChunkMeshUnion> chunkMeshes = computeVisibleChunks();
-        pipeline.renderChunks(chunkMeshes, faceCulling);
+        helper.renderChunks(chunkMeshes, faceCulling);
+
+        //Block Hover
+        if(selectedBlockPos != null)
+            helper.renderBlockOver(blockHighlight, selectedBlockPos);
 
         //Chunk debug border
         if(renderChunkBorders)
-            pipeline.renderDebugBorder(debugBorder, chunkMeshes.stream().map(ChunkMeshUnion::worldPosition).collect(Collectors.toSet()), polygonMode);
-
-        pipeline.end();
+            helper.renderDebugBorder(
+                    chunkOutline,
+                    chunkMeshes.stream().filter(union -> !union.isEmpty()).map(ChunkMeshUnion::worldPosition).collect(Collectors.toSet())
+            );
     }
 
     private Collection<ChunkMeshUnion> computeVisibleChunks() {
@@ -105,12 +117,12 @@ public class WorldRenderer implements Renderable, Disposable {
 
     @Override
     public void dispose() {
-        debugBorder.dispose();
+        blockHighlight.dispose();
+        chunkOutline.dispose();
         solidShader.dispose();
         waterShader.dispose();
-        chunkOutlineShader.dispose();
 
-        Optional.ofNullable(textureAtlas.getAtlas()).ifPresent(Texture::dispose);
+        textureAtlas.dispose();
     }
 
     public void addChunk(Chunk chunk) {
@@ -133,8 +145,10 @@ public class WorldRenderer implements Renderable, Disposable {
 
     public void updateChunkSync(Chunk chunk) {
         final ChunkMeshUnion union = chunkMeshes.get(chunk.position());
-        if(union == null)
+        if(union == null) {
+            addChunk(chunk);
             return;
+        }
 
         union.constructMeshSync(chunk);
     }

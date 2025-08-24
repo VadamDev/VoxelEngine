@@ -4,13 +4,13 @@ import net.vadamdev.voxel.VoxelGame;
 import net.vadamdev.voxel.engine.graphics.rendering.Camera;
 import net.vadamdev.voxel.engine.inputs.Keyboard;
 import net.vadamdev.voxel.engine.inputs.Mouse;
+import net.vadamdev.voxel.rendering.terrain.WorldRenderer;
 import net.vadamdev.voxel.world.AbstractWorld;
 import net.vadamdev.voxel.world.blocks.Block;
+import net.vadamdev.voxel.world.blocks.Blocks;
 import net.vadamdev.voxel.world.raycast.Raycast;
+import org.joml.*;
 import org.joml.Math;
-import org.joml.Vector2f;
-import org.joml.Vector3d;
-import org.joml.Vector3f;
 
 /**
  * @author VadamDev
@@ -135,6 +135,8 @@ public class PlayerController {
     private void processMouseButtons() {
         final AbstractWorld world = VoxelGame.get().getWorld();
         final Raycast.Result result = world.newRay(0.01f, 5).cast(camera);
+
+        updateHighlightedBlock(result);
         if(result.isEmpty() || System.currentTimeMillis() - lastPlaceOrBreak < 100)
             return;
 
@@ -150,11 +152,13 @@ public class PlayerController {
 
             worked = true;
         }else if(Mouse.isButtonDown(Mouse.BUTTON_2)) {
-            final Vector3d placePos = result.previousPos();
-            final Block blockAtPlacePos = world.getBlock(placePos.x(), placePos.y(), placePos.z());
+            Vector3d placePos = result.previousPos();
+            if(Blocks.getBlockNotNull(result.blockId()).isFragile())
+                placePos = result.pos();
 
+            final Block blockAtPlacePos = world.getBlock(placePos);
             if(blockAtPlacePos == null || blockAtPlacePos.isFragile()) {
-                world.setBlock((short) 1, placePos.x(), placePos.y(), placePos.z());
+                world.setBlock(Blocks.STONE, placePos);
                 world.getNearbyChunks(hitX, hitY, hitZ, true).forEach(VoxelGame.get().getWorldRenderer()::updateChunkSync);
 
                 worked = true;
@@ -163,5 +167,18 @@ public class PlayerController {
 
         if(worked)
             lastPlaceOrBreak = System.currentTimeMillis();
+    }
+
+    private void updateHighlightedBlock(Raycast.Result raycastResult) {
+        final WorldRenderer worldRenderer = VoxelGame.get().getWorldRenderer();
+        if(raycastResult.isEmpty()) {
+            if(worldRenderer.selectedBlockPos != null)
+                worldRenderer.selectedBlockPos = null;
+
+            return;
+        }
+
+        final Vector3d hitPos = raycastResult.pos();
+        worldRenderer.selectedBlockPos = new Vector3i((int) Math.floor(hitPos.x()), (int) Math.floor(hitPos.y()), (int) Math.floor(hitPos.z()));
     }
 }

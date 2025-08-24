@@ -1,4 +1,4 @@
-package net.vadamdev.voxel.rendering.mesh;
+package net.vadamdev.voxel.rendering.mesh.helpers;
 
 import org.joml.Vector3f;
 
@@ -6,11 +6,11 @@ import org.joml.Vector3f;
  * @author VadamDev
  * @since 16/08/2025
  */
-public class CubeMeshBase {
+public class CubeMeshData {
     private final float[] vertices;
     private final int[] indices;
 
-    public CubeMeshBase(Vector3f from, Vector3f to) {
+    public CubeMeshData(Vector3f from, Vector3f to) {
         final float startX = from.x();
         final float startY = from.y();
         final float startZ = from.z();

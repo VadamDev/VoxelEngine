@@ -9,17 +9,13 @@ import static org.lwjgl.opengl.GL33.*;
  * @since 18/08/2025
  */
 public class InstancedVertexArrayObject extends VertexArrayObject {
-    protected int instanceCount;
+    public int instanceCount;
 
     public InstancedVertexArrayObject() {
         this.instanceCount = 0;
     }
 
-    public <T extends Buffer> int genBufferInstanced(T buffer, int size) {
-        return genBufferInstanced(buffer, size, 1);
-    }
-
-    public <T extends Buffer> int genBufferInstanced(T buffer, int size, int divisor) {
+    public <T extends Buffer> int genBufferInstanced(T buffer, int size, int divisor, int usage) {
         if(destroyed)
             throw new IllegalStateException("VAO was destroyed");
 
@@ -29,7 +25,7 @@ public class InstancedVertexArrayObject extends VertexArrayObject {
         final int bufferId = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, bufferId);
 
-        glGenericBufferData(GL_ARRAY_BUFFER, buffer, GL_STREAM_DRAW);
+        glGenericBufferData(GL_ARRAY_BUFFER, buffer, usage);
         glEnableVertexAttribArray(vertexAttribIndex);
         glVertexAttribPointer(vertexAttribIndex, size, glGenericBufferDataType(false, buffer), false, 0, 0);
         glVertexAttribDivisor(vertexAttribIndex, divisor);
@@ -40,6 +36,14 @@ public class InstancedVertexArrayObject extends VertexArrayObject {
 
         vertexAttribIndex++;
         return bufferId;
+    }
+
+    public <T extends Buffer> int genBufferInstanced(T buffer, int size, int divisor) {
+        return genBufferInstanced(buffer, size, 1, GL_STATIC_DRAW);
+    }
+
+    public <T extends Buffer> int genBufferInstanced(T buffer, int size) {
+        return genBufferInstanced(buffer, size, 1);
     }
 
     @Override

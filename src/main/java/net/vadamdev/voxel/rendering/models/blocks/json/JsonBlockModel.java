@@ -5,12 +5,7 @@ import net.vadamdev.voxel.engine.json.PreemJsonObj;
 import net.vadamdev.voxel.engine.utils.FileUtils;
 import net.vadamdev.voxel.rendering.models.BlockModels;
 import net.vadamdev.voxel.rendering.models.blocks.BlockModel;
-import net.vadamdev.voxel.rendering.models.blocks.VoxelFactory;
-import net.vadamdev.voxel.rendering.models.blocks.VoxelTextureRef;
-import net.vadamdev.voxel.world.Direction;
 import org.jetbrains.annotations.Nullable;
-import org.joml.*;
-import org.joml.Math;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
 

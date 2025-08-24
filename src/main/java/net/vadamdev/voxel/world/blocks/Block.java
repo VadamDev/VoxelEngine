@@ -5,8 +5,6 @@ import net.vadamdev.voxel.rendering.models.blocks.BlockModel;
 import net.vadamdev.voxel.world.AbstractWorld;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author VadamDev

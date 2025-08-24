@@ -1,8 +1,8 @@
 package net.vadamdev.voxel.world.blocks;
 
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
-import net.vadamdev.voxel.world.blocks.impl.EdgeBlock;
 import net.vadamdev.voxel.world.blocks.impl.BillboardBlock;
+import net.vadamdev.voxel.world.blocks.impl.EdgeBlock;
 import net.vadamdev.voxel.world.blocks.impl.UnknownBlock;
 import net.vadamdev.voxel.world.blocks.impl.WaterBlock;
 import org.jetbrains.annotations.NotNull;

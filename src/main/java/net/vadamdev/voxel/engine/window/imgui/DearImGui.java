@@ -1,7 +1,6 @@
 package net.vadamdev.voxel.engine.window.imgui;
 
 import imgui.ImGui;
-import imgui.ImVec2;
 
 /**
  * @author VadamDev

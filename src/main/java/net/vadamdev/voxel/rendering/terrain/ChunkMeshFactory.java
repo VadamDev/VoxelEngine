@@ -120,7 +120,7 @@ public class ChunkMeshFactory {
         int adjacentBlocks = 0;
 
         for(Direction dir : Direction.readValues()) {
-            if(!shouldMaskFace(world.getBlock(x + dir.modX(), y + dir.modY(), z + dir.modZ()), selfBlockId))
+            if(!shouldMaskFace(dir, world.getBlock(x + dir.modX(), y + dir.modY(), z + dir.modZ()), selfBlockId))
                 continue;
 
             adjacentBlocks |= dir.bitMask();
@@ -129,14 +129,14 @@ public class ChunkMeshFactory {
         return adjacentBlocks;
     }
 
-    private boolean shouldMaskFace(Block adjacentBlock, short selfBlockId) {
+    private boolean shouldMaskFace(Direction dir, Block adjacentBlock, short selfBlockId) {
         //A placeholder block replaces blocks outside of chunks, so if the adjacent block is null it can only be air
         if(adjacentBlock == null)
             return false;
 
         //No meshing chunk borders, avoid world gen chunk borders artifacts
         if(adjacentBlock.blockId() == EdgeBlock.EDGE_BLOCK_ID)
-            return true;
+            return !(dir.equals(Direction.UP) || dir.equals(Direction.DOWN));
 
         //self-explanatory
         if(adjacentBlock.blockId() != selfBlockId && !adjacentBlock.isTransparent())

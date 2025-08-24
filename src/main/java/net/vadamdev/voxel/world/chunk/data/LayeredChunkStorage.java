@@ -38,9 +38,10 @@ public class LayeredChunkStorage implements IChunkStorage {
     public void setBlock(short blockId, int localX, int localY, int localZ) {
         ILayeredChunkData layer = layers[localY];
 
-        if(layer == null)
+        if(layer == null) {
             layer = new LayeredChunkData();
-        else if(layer instanceof SingletonLayeredChunkData singletonLayer && singletonLayer.getStored() != blockId) {
+            layers[localY] = layer;
+        }else if(layer instanceof SingletonLayeredChunkData singletonLayer && singletonLayer.getStored() != blockId) {
             final LayeredChunkData newLayer = LayeredChunkData.of(singletonLayer);
 
             layers[localY] = newLayer;

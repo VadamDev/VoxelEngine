@@ -2,7 +2,9 @@ package net.vadamdev.voxel.rendering.terrain.shaders;
 
 import net.vadamdev.voxel.VoxelGame;
 import net.vadamdev.voxel.engine.graphics.rendering.EngineData;
-import net.vadamdev.voxel.engine.graphics.shaders.*;
+import net.vadamdev.voxel.engine.graphics.shaders.ShaderProgram;
+import net.vadamdev.voxel.engine.graphics.shaders.StructAccess;
+import net.vadamdev.voxel.engine.graphics.shaders.UniformAccess;
 
 /**
  * @author VadamDev

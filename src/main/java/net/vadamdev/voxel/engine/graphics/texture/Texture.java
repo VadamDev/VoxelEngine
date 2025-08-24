@@ -51,8 +51,7 @@ public class Texture implements Disposable {
 
             unbind();
         }finally {
-            if(buffer != null)
-                MemoryUtil.memFree(buffer);
+            MemoryUtil.memFree(buffer);
         }
     }
 

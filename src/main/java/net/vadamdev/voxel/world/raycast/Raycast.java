@@ -2,6 +2,7 @@ package net.vadamdev.voxel.world.raycast;
 
 import net.vadamdev.voxel.engine.graphics.rendering.Camera;
 import net.vadamdev.voxel.world.AbstractWorld;
+import net.vadamdev.voxel.world.blocks.impl.EdgeBlock;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
@@ -30,7 +31,7 @@ public class Raycast {
 
         for(double length = 0; length < maxRange; length += stepSize) {
             final short blockId = world.getBlockId(pos.x(), pos.y(), pos.z());
-            if(blockId != 0)
+            if(blockId != 0 && blockId != EdgeBlock.EDGE_BLOCK_ID)
                 return new Result(pos, previousPos, blockId, length);
 
             previousPos = new Vector3d(pos);

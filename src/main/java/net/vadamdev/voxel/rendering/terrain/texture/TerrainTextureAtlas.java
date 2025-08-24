@@ -2,6 +2,7 @@ package net.vadamdev.voxel.rendering.terrain.texture;
 
 import net.vadamdev.voxel.engine.graphics.texture.TextureAtlas;
 import net.vadamdev.voxel.engine.graphics.texture.TextureUtils;
+import net.vadamdev.voxel.engine.utils.Disposable;
 import net.vadamdev.voxel.engine.utils.FileUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -22,7 +23,7 @@ import java.util.Map;
  * @author VadamDev
  * @since 07/06/2025
  */
-public class TerrainTextureAtlas {
+public class TerrainTextureAtlas implements Disposable {
     public static final int FILL_COLOR = new Color(49, 49, 49).getRGB();
     public static final int GRID_COLOR = new Color(65, 65, 65).getRGB();
 
@@ -144,6 +145,12 @@ public class TerrainTextureAtlas {
     @Nullable
     public TextureAtlas getAtlas() {
         return atlas;
+    }
+
+    @Override
+    public void dispose() {
+        if(atlas != null)
+            atlas.dispose();
     }
 
     private record TextureData(String textureName, BufferedImage image) {}

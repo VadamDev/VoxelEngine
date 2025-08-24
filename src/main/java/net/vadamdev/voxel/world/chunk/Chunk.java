@@ -1,6 +1,5 @@
 package net.vadamdev.voxel.world.chunk;
 
-import net.vadamdev.voxel.engine.utils.Disposable;
 import net.vadamdev.voxel.world.chunk.data.IChunkStorage;
 import net.vadamdev.voxel.world.chunk.data.LayeredChunkStorage;
 import net.vadamdev.voxel.world.chunk.data.SingletonChunkStorage;
@@ -11,7 +10,7 @@ import org.joml.Vector3i;
  * @author VadamDev
  * @since 06/06/2025
  */
-public class Chunk implements Disposable {
+public class Chunk {
     public static final int CHUNK_WIDTH = 32;
     public static final int CHUNK_HEIGHT = 32;
     public static final int CHUNK_DEPTH = 32;
@@ -48,15 +47,6 @@ public class Chunk implements Disposable {
         this.storage = new SingletonChunkStorage();
     }
 
-    public void update() {
-
-    }
-
-    @Override
-    public void dispose() {
-
-    }
-
     /*
        Get & Set blocks
      */
@@ -77,7 +67,11 @@ public class Chunk implements Disposable {
     }
 
     public void tryCompress() {
-        storage.tryCompress();
+        final short blockId = storage.getBlock(0, 0, 0);
+        if(storage instanceof LayeredChunkStorage && storage.isFullOf(blockId))
+            storage = new SingletonChunkStorage(blockId);
+        else
+            storage.tryCompress();
     }
 
     public Vector3i position() {

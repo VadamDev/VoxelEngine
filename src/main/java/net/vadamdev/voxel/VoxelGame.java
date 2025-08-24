@@ -9,8 +9,8 @@ import net.vadamdev.voxel.engine.inputs.Keyboard;
 import net.vadamdev.voxel.engine.inputs.Mouse;
 import net.vadamdev.voxel.engine.window.imgui.ImGuiCapableWindow;
 import net.vadamdev.voxel.rendering.models.BlockModels;
-import net.vadamdev.voxel.rendering.terrain.WorldRenderer;
 import net.vadamdev.voxel.rendering.terrain.ChunkMeshFactory;
+import net.vadamdev.voxel.rendering.terrain.WorldRenderer;
 import net.vadamdev.voxel.world.World;
 import net.vadamdev.voxel.world.blocks.Blocks;
 import org.joml.Vector3f;
@@ -40,9 +40,11 @@ public class VoxelGame extends AbstractGame<ImGuiCapableWindow> {
 
     @Override
     public void init() throws Exception {
+        logger.info("Instancing World...");
         world = new World();
 
         //Matrices
+        logger.info("Initializing Rendering...");
         matrixDrawer = new MatrixDrawer();
 
         //Camera & Player Controller
@@ -52,10 +54,12 @@ public class VoxelGame extends AbstractGame<ImGuiCapableWindow> {
         engineRenderingData = new EngineData(camera, matrixDrawer, gameLoop);
 
         //World
+        logger.info("Creating World Renderer...");
         meshFactory = new ChunkMeshFactory(world);
         worldRenderer = new WorldRenderer(meshFactory, matrixDrawer);
 
         //Blocks
+        logger.info("Registering Blocks...");
         Blocks.registerAll();
         BlockModels.loadBlockModels();
 
